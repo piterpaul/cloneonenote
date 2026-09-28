@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#7719aa" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OneNote Clone" />
+  <title>OneNote Web Clone (PWA) — Notas, Boli Táctil, Google Docs y Drive</title>
+  <link rel="icon" href="./favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./styles.css?v=5" />
+</head>
+<body>
+  <!-- BARRA SUPERIOR ESTILO MICROSOFT ONENOTE -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="toggleSidebarBtn" class="icon-btn" title="Mostrar/Ocultar lista de Blocs y Páginas">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">N</div>
+        <div class="brand-text">
+          <span class="brand-title">OneNote Clone</span>
+          <span id="osBadge" class="os-badge">PWA · Android, Mac & Chromebook</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-center">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="search" id="globalSearchInput" placeholder="Buscar en notas, páginas y Google Docs..." aria-label="Buscar en las notas" />
+        <div id="searchResultsDropdown" class="search-dropdown hidden"></div>
+      </div>
+
+      <!-- Indicador en vivo de Boli Táctil / Presión -->
+      <div id="pointerStatusPill" class="pointer-pill" title="Detecta automáticamente Boli Táctil (S-Pen / USI / Stylus), Dedo o Ratón">
+        <span id="pointerIcon">🖊️</span>
+        <span id="pointerTypeText">Boli / Táctil listo</span>
+        <span id="pressureBadge" class="pressure-badge">Presión: --</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div id="syncStatusIndicator" class="sync-status" title="Estado de guardado local y en Google Drive">
+        <span class="sync-dot synced" id="syncDot"></span>
+        <span id="syncText" class="hide-on-mobile">Guardado</span>
+      </div>
+
+      <!-- Botón para alternar Vista Simple Móvil (Texto ocupa casi todo el espacio) -->
+      <button id="toggleSimpleLayoutBtn" class="topbar-btn" title="Alternar Vista Simple Móvil (Texto a pantalla completa) / Vista Completa de Escritorio">
+        <span id="simpleLayoutIcon">📱</span>
+        <span id="simpleLayoutLabel" class="hide-on-mobile">Vista Simple Móvil</span>
+      </button>
+
+      <!-- Botón Directo de Google Docs (Importar y Guardar como Google Docs) -->
+      <button id="openGoogleDocsModalBtn" class="topbar-btn gdocs-btn" title="Coger archivos de Google Docs o grabar esta nota en formato Google Docs (.docx / .doc)">
+        <span>📄</span>
+        <span>Google Docs</span>
+      </button>
+
+      <button id="openAndroidPwaModalBtn" class="topbar-btn pwa-btn hide-on-small-phone" title="Abrir en tu Android vía Wi-Fi / QR o instalar como aplicación PWA">
+        <span>📲</span>
+        <span id="pwaBtnLabel" class="hide-on-mobile">Probar en Android</span>
+      </button>
+
+      <button id="saveToDriveBtn" class="topbar-btn drive-action-btn" title="Guardar bloc de notas en tu cuenta de Google Drive (Cmd+S / Ctrl+S)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+        <span class="hide-on-mobile">Guardar en Drive</span>
+      </button>
+
+      <button id="openDriveModalBtn" class="topbar-btn google-auth-btn" title="Validar con tus credenciales de Google y gestionar archivos">
+        <div id="topbarAvatarBadge" class="topbar-avatar-badge hidden">G</div>
+        <svg id="googleGIcon" width="16" height="16" viewBox="0 0 24 24">
+          <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/>
+          <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/>
+          <path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"/>
+          <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"/>
+        </svg>
+        <span id="googleUserLabel" class="hide-on-small-phone">Credenciales Google</span>
+      </button>
+
+      <button id="themeToggleBtn" class="icon-btn" title="Cambiar Modo Claro / Oscuro">🌙</button>
+    </div>
+  </header>
+
+  <!-- BARRA ULTRASIMPLE DE 1 FILA PARA MÓVIL / ANDROID PWA -->
+  <div id="mobileQuickToolbar" class="mobile-quick-toolbar" aria-label="Herramientas rápidas móviles">
+    <button class="m-tool-btn mode-trigger active" data-tool="text" title="Escribir texto ocupando toda la pantalla">
+      ⌨️ Texto
+    </button>
+    <button class="m-tool-btn pen-preset-btn" data-tool="pen" data-color="#1e293b" data-size="3" title="Dibujar con boli táctil">
+      🖊️ Boli
+    </button>
+    <button class="m-tool-btn pen-preset-btn" data-tool="highlighter" data-color="#facc15" data-size="18" title="Subrayador amarillo">
+      🖍️ Subrayar
+    </button>
+    <button class="m-tool-btn mode-trigger" data-tool="stroke-eraser" title="Borrar trazo de boli">
+      🧽 Borrar
+    </button>
+    <button id="mobileInsertImageBtn" class="m-tool-btn" title="Insertar foto o imagen">
+      🖼️ Foto
+    </button>
+    <button id="mobileTodoBtn" class="m-tool-btn" title="Insertar casilla de tarea">
+      ☑️ Tarea
+    </button>
+    <button id="mobileVoiceBtn" class="m-tool-btn" title="Dictar por voz">
+      🎤 Voz
+    </button>
+    <button id="mobileSaveGDocBtn" class="m-tool-btn gdoc-accent" title="Grabar esta nota directamente en formato Google Docs">
+      📄 Grabar Docs
+    </button>
+    <button id="mobileImportGDocBtn" class="m-tool-btn gdoc-accent" title="Coger un archivo de Google Docs">
+      📥 Coger Docs
+    </button>
+  </div>
+
+  <!-- CINTA DE OPCIONES COMPLETA DE ESCRITORIO (SE OCULTA AUTOMÁTICAMENTE EN MODO SIMPLE MÓVIL) -->
+  <nav class="ribbon" aria-label="Herramientas de OneNote">
+    <div class="ribbon-tabs">
+      <div class="ribbon-tabs-left">
+        <button class="ribbon-tab" data-tab="home">Inicio (Teclado)</button>
+        <button class="ribbon-tab" data-tab="insert">Insertar (Imágenes y Google Docs)</button>
+        <button class="ribbon-tab active" data-tab="draw">Dibujar (Boli Táctil)</button>
+        <button class="ribbon-tab" data-tab="view">Vista y Exportación</button>
+      </div>
+      <div class="ribbon-tabs-right">
+        <button id="quickUndoBtn" class="ribbon-mini-btn" title="Deshacer (Cmd+Z / Ctrl+Z)">↩️ Deshacer</button>
+        <button id="quickRedoBtn" class="ribbon-mini-btn" title="Rehacer (Cmd+Shift+Z / Ctrl+Y)">↪️ Rehacer</button>
+        <span id="lassoSelectionControls" class="lasso-controls hidden">
+          <span class="lasso-badge" id="lassoCountBadge">0 trazos</span>
+          <button id="lassoRecolorBtn" class="ribbon-mini-btn" title="Aplicar el color actual a los trazos seleccionados con el lazo">🎨 Colorear</button>
+          <button id="lassoDeleteBtn" class="ribbon-mini-btn danger" title="Eliminar trazos seleccionados">🗑️ Borrar</button>
+        </span>
+      </div>
+    </div>
+
+    <!-- PANEL 1: INICIO (TECLADO Y CONTENEDORES DE TEXTO) -->
+    <div class="ribbon-panel" id="tab-home">
+      <div class="ribbon-group">
+        <button class="tool-btn mode-trigger" data-tool="text" title="Modo Texto: Toca cualquier lugar del lienzo para escribir con el teclado">
+          <span class="tool-icon">⌨️</span>
+          <span>Modo Texto</span>
+        </button>
+        <button id="addTextBoxBtn" class="tool-btn" title="Crear un nuevo cuadro de texto en la página">
+          <span class="tool-icon">➕</span>
+          <span>Nueva Nota</span>
+        </button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <select id="fontSizeSelect" class="ribbon-select" title="Tamaño de fuente" aria-label="Tamaño de fuente">
+          <option value="3">Normal (16px)</option>
+          <option value="2">Pequeña (13px)</option>
+          <option value="4">Subtítulo (18px)</option>
+          <option value="5">Título (24px)</option>
+          <option value="6">Título Grande (32px)</option>
+        </select>
+        <button class="format-btn" data-cmd="bold" title="Negrita"><b>B</b></button>
+        <button class="format-btn" data-cmd="italic" title="Cursiva"><i>I</i></button>
+        <button class="format-btn" data-cmd="underline" title="Subrayado"><u>U</u></button>
+        <button class="format-btn" data-cmd="strikeThrough" title="Tachado"><s>S</s></button>
+        <button class="format-btn" data-cmd="insertUnorderedList" title="Lista con viñetas">• Lista</button>
+        <button class="format-btn" data-cmd="insertOrderedList" title="Lista numerada">1. Lista</button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <span class="group-label">Etiquetas:</span>
+        <button class="tag-btn" data-tag="todo" title="Insertar casilla de tarea interactiva (To-Do)">☑️ Tarea</button>
+        <button class="tag-btn" data-tag="important" title="Marcar como Importante">⭐ Importante</button>
+        <button class="tag-btn" data-tag="question" title="Marcar como Pregunta">❓ Pregunta</button>
+        <button class="tag-btn" data-tag="idea" title="Marcar como Idea">💡 Idea</button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <button id="voiceDictationBtn" class="tool-btn" title="Dictar notas por voz con el micrófono">
+          <span class="tool-icon">🎤</span>
+          <span id="voiceDictationLabel">Dictar Voz</span>
+        </button>
+        <button id="ribbonQuickSaveGDocBtn" class="tool-btn primary-accent" title="Grabar esta nota directamente en formato Google Docs">
+          <span class="tool-icon">📄</span>
+          <span>Grabar en Google Docs</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PANEL 2: INSERTAR (GOOGLE DOCS, IMÁGENES, CÁMARA, TABLAS, POST-IT) -->
+    <div class="ribbon-panel" id="tab-insert">
+      <div class="ribbon-group">
+        <button id="ribbonImportGDocBtn" class="tool-btn primary-accent" title="Coger un archivo de Google Docs (.docx, .doc, .html, .txt) o enlace de Google Docs para usarlo en tus notas">
+          <span class="tool-icon">📥</span>
+          <span>Coger de Google Docs</span>
+        </button>
+        <button id="ribbonSaveGDocBtn" class="tool-btn primary-accent" title="Grabar la nota actual en formato Google Docs">
+          <span class="tool-icon">📄</span>
+          <span>Grabar como Google Docs</span>
+        </button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <button id="insertImageBtn" class="tool-btn" title="Subir imagen desde tu galería de Android, Mac o Chromebook">
+          <span class="tool-icon">🖼️</span>
+          <span>Insertar Imagen</span>
+        </button>
+        <input type="file" id="imageFileInput" accept="image/*" multiple class="hidden" />
+
+        <button id="openCameraModalBtn" class="tool-btn" title="Tomar foto con la cámara e insertarla en el lienzo">
+          <span class="tool-icon">📷</span>
+          <span>Cámara / Foto</span>
+        </button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <button id="insertStickyNoteBtn" class="tool-btn" title="Insertar una nota rápida adhesiva de color (Post-it)">
+          <span class="tool-icon">🟨</span>
+          <span>Nota Adhesiva</span>
+        </button>
+        <button id="insertTableBtn" class="tool-btn" title="Insertar una tabla editable 3x3 en un contenedor">
+          <span class="tool-icon">📊</span>
+          <span>Tabla 3x3</span>
+        </button>
+        <button id="insertTimestampBtn" class="tool-btn" title="Insertar sello de fecha y hora actual">
+          <span class="tool-icon">📅</span>
+          <span>Fecha y Hora</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PANEL 3: DIBUJAR (BOLI TÁCTIL / STYLUS / TINTA DIGITAL) -->
+    <div class="ribbon-panel active" id="tab-draw">
+      <div class="ribbon-group">
+        <button class="tool-btn mode-trigger" data-tool="text" title="Escribir con teclado o mover cajas de texto e imágenes">
+          <span class="tool-icon">⌨️</span>
+          <span>Texto / Mover</span>
+        </button>
+        <button class="tool-btn mode-trigger" data-tool="lasso" title="Selección de Lazo: rodea trazos hechos con el boli táctil para moverlos o cambiarles el color">
+          <span class="tool-icon">🪢</span>
+          <span>Lazo</span>
+        </button>
+        <button class="tool-btn mode-trigger" data-tool="pan" title="Desplazar el lienzo con el dedo o ratón">
+          <span class="tool-icon">✋</span>
+          <span>Mano</span>
+        </button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group pens-gallery">
+        <button class="pen-preset-btn active" data-tool="pen" data-color="#1e293b" data-size="3" title="Bolígrafo Negro Fino (3px)">
+          <span class="pen-tip" style="background: #1e293b;"></span>
+          <span>Boli Fino</span>
+        </button>
+        <button class="pen-preset-btn" data-tool="pen" data-color="#1d4ed8" data-size="4" title="Bolígrafo Azul Apuntes (4px)">
+          <span class="pen-tip" style="background: #1d4ed8;"></span>
+          <span>Boli Azul</span>
+        </button>
+        <button class="pen-preset-btn" data-tool="pen" data-color="#dc2626" data-size="4" title="Bolígrafo Rojo Corrección (4px)">
+          <span class="pen-tip" style="background: #dc2626;"></span>
+          <span>Boli Rojo</span>
+        </button>
+        <button class="pen-preset-btn" data-tool="rainbow" data-color="rainbow" data-size="5" title="Bolígrafo Tinta Arcoíris de OneNote">
+          <span class="pen-tip rainbow-tip"></span>
+          <span>Arcoíris</span>
+        </button>
+        <button class="pen-preset-btn" data-tool="highlighter" data-color="#facc15" data-size="18" title="Marcador de Resaltado Amarillo (Subrayador translúcido)">
+          <span class="pen-tip highlighter-tip" style="background: #facc15;"></span>
+          <span>Subrayador</span>
+        </button>
+        <button class="pen-preset-btn" data-tool="highlighter" data-color="#4ade80" data-size="18" title="Marcador de Resaltado Verde">
+          <span class="pen-tip highlighter-tip" style="background: #4ade80;"></span>
+          <span>Subrayador V.</span>
+        </button>
+        <button class="tool-btn mode-trigger" data-tool="stroke-eraser" title="Borrador de Trazos OneNote: toca cualquier parte de una línea para borrar el trazo entero">
+          <span class="tool-icon">🧽</span>
+          <span>Borrar Trazo</span>
+        </button>
+        <button class="tool-btn mode-trigger" data-tool="pixel-eraser" title="Borrador de Precisión: borra únicamente por donde pasa la punta">
+          <span class="tool-icon">🧼</span>
+          <span>Borrador Parcial</span>
+        </button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group stroke-settings">
+        <div class="color-swatches" aria-label="Colores de tinta">
+          <button class="color-swatch active" data-color="#1e293b" style="background:#1e293b" title="Negro tinta"></button>
+          <button class="color-swatch" data-color="#1d4ed8" style="background:#1d4ed8" title="Azul real"></button>
+          <button class="color-swatch" data-color="#dc2626" style="background:#dc2626" title="Rojo carmesí"></button>
+          <button class="color-swatch" data-color="#15803d" style="background:#15803d" title="Verde bosque"></button>
+          <button class="color-swatch" data-color="#7719aa" style="background:#7719aa" title="Púrpura OneNote"></button>
+          <button class="color-swatch" data-color="#ea580c" style="background:#ea580c" title="Naranja"></button>
+          <input type="color" id="customInkColorPicker" value="#1e293b" title="Elegir cualquier color personalizado" aria-label="Color personalizado" />
+        </div>
+
+        <label class="thickness-control" title="Grosor del trazo en píxeles">
+          <span>Grosor: <strong id="strokeSizeValue">3</strong>px</span>
+          <input type="range" id="strokeSizeRange" min="1" max="32" value="3" />
+        </label>
+
+        <label class="toggle-check" title="Ajusta automáticamente el grosor según la fuerza ejercida con el boli táctil (Stylus Pressure)">
+          <input type="checkbox" id="pressureSensitivityToggle" checked />
+          <span>Presión Boli</span>
+        </label>
+
+        <label class="toggle-check" title="Rechazo de palma (Solo Boli): Si lo activas, solo el lápiz óptico dibuja y el dedo mueve la página">
+          <input type="checkbox" id="stylusOnlyToggle" />
+          <span>Solo Boli (Palm Reject)</span>
+        </label>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <span class="group-label">Formas:</span>
+        <button class="tool-btn mode-trigger" data-tool="line" title="Dibujar línea recta">╱</button>
+        <button class="tool-btn mode-trigger" data-tool="arrow" title="Dibujar flecha">↗️</button>
+        <button class="tool-btn mode-trigger" data-tool="rect" title="Dibujar rectángulo">▭</button>
+        <button class="tool-btn mode-trigger" data-tool="ellipse" title="Dibujar círculo o elipse">◯</button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <button id="replayInkBtn" class="tool-btn" title="Reproducir animación paso a paso de cómo se escribieron los trazos del boli">
+          <span class="tool-icon">▶️</span>
+          <span>Reproducir</span>
+        </button>
+        <button id="clearInkBtn" class="tool-btn danger-hover" title="Borrar todos los trazos de boli de esta página">
+          <span class="tool-icon">🗑️</span>
+          <span>Limpiar Tinta</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PANEL 4: VISTA, PAPEL Y EXPORTACIÓN -->
+    <div class="ribbon-panel" id="tab-view">
+      <div class="ribbon-group">
+        <span class="group-label">Pauta / Cuadrícula:</span>
+        <select id="paperLinesSelect" class="ribbon-select" aria-label="Estilo de líneas de papel">
+          <option value="blank">📄 Papel en Blanco</option>
+          <option value="ruled-narrow">📝 Renglones Estrechos</option>
+          <option value="ruled-wide" selected>📓 Renglones de Cuaderno</option>
+          <option value="grid-small">📐 Cuadrícula Pequeña (Mate)</option>
+          <option value="grid-large">🧮 Cuadrícula Grande</option>
+          <option value="dots">⠿ Punteado (Bullet Journal)</option>
+        </select>
+
+        <span class="group-label">Color Papel:</span>
+        <div class="paper-colors">
+          <button class="paper-color-btn active" data-bg="#ffffff" style="background:#ffffff" title="Blanco puro"></button>
+          <button class="paper-color-btn" data-bg="#fef9c3" style="background:#fef9c3" title="Amarillo Legal Pad"></button>
+          <button class="paper-color-btn" data-bg="#e0f2fe" style="background:#e0f2fe" title="Azul celeste"></button>
+          <button class="paper-color-btn" data-bg="#dcfce7" style="background:#dcfce7" title="Verde menta"></button>
+          <button class="paper-color-btn" data-bg="#fce7f3" style="background:#fce7f3" title="Rosa suave"></button>
+        </div>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <span class="group-label">Zoom:</span>
+        <button id="zoomOutBtn" class="format-btn" title="Alejar lienzo">➖</button>
+        <button id="zoomResetBtn" class="format-btn" title="Restablecer zoom al 100%">100%</button>
+        <button id="zoomInBtn" class="format-btn" title="Acercar lienzo">➕</button>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <div class="ribbon-group">
+        <button id="exportPngBtn" class="tool-btn" title="Descargar imagen PNG de alta resolución con notas y dibujos combinados">
+          <span class="tool-icon">🖼️</span>
+          <span>Exportar PNG</span>
+        </button>
+        <button id="uploadPngDriveBtn" class="tool-btn" title="Guardar o enviar captura PNG de la página actual a Google Drive">
+          <span class="tool-icon">☁️</span>
+          <span>PNG a Drive</span>
+        </button>
+        <button id="exportJsonBtn" class="tool-btn" title="Descargar archivo .onenote.json con todos tus blocs y trazos">
+          <span class="tool-icon">💾</span>
+          <span>Exportar JSON</span>
+        </button>
+        <button id="importJsonBtn" class="tool-btn" title="Importar un archivo .onenote.json previamente guardado">
+          <span class="tool-icon">📂</span>
+          <span>Importar JSON</span>
+        </button>
+        <input type="file" id="importJsonInput" accept=".json,application/json" class="hidden" />
+      </div>
+    </div>
+  </nav>
+
+  <!-- ÁREA DE TRABAJO PRINCIPAL: JERARQUÍA ONENOTE + LIENZO MULTIMODAL -->
+  <main class="workspace">
+    <!-- BARRA LATERAL JERÁRQUICA (BLOCS -> SECCIONES -> PÁGINAS) -->
+    <aside id="sidebarContainer" class="sidebar-container">
+      <!-- Columna 1: Blocs y Secciones -->
+      <div class="notebook-sections-col">
+        <div class="notebook-selector-header">
+          <label for="notebookSelect" class="sr-only">Seleccionar Bloc de Notas</label>
+          <select id="notebookSelect" class="notebook-select" title="Cambiar de Bloc de Notas"></select>
+          <button id="newNotebookBtn" class="mini-icon-btn" title="Crear nuevo Bloc de Notas">➕</button>
+        </div>
+
+        <div class="col-subheader">
+          <span>SECCIONES</span>
+          <button id="newSectionBtn" class="mini-add-btn" title="Nueva Sección">+ Sección</button>
+        </div>
+
+        <ul id="sectionsList" class="sections-list" aria-label="Secciones del bloc de notas"></ul>
+      </div>
+
+      <!-- Columna 2: Páginas de la Sección Activa -->
+      <div class="pages-col">
+        <div class="col-subheader">
+          <span>PÁGINAS</span>
+          <button id="newPageBtn" class="mini-add-btn primary" title="Crear nueva página en esta sección">+ Página</button>
+        </div>
+
+        <ul id="pagesList" class="pages-list" aria-label="Páginas de la sección"></ul>
+      </div>
+    </aside>
+
+    <!-- CONTENEDOR DEL LIENZO INFINITO / PÁGINA ONENOTE -->
+    <section class="canvas-viewport" id="canvasViewport">
+      <div id="pageSurface" class="page-surface paper-ruled-wide">
+        <!-- Encabezado de Página clásico de OneNote -->
+        <div class="page-header-zone">
+          <input
+            type="text"
+            id="pageTitleInput"
+            class="page-title-input"
+            placeholder="Título de la página..."
+            aria-label="Título de la página"
+          />
+          <div class="page-meta-row">
+            <span id="pageDateLabel" class="page-date-label"></span>
+            <span class="page-hint-pill">Escribe con teclado o usa el boli táctil para anotar</span>
+          </div>
+        </div>
+
+        <!-- CAPA 1: CONTENEDORES DE TEXTO E IMÁGENES -->
+        <div id="blocksLayer" class="blocks-layer"></div>
+
+        <!-- CAPA 2: LIENZO VECTORIAL DE TINTA DIGITAL (BOLI TÁCTIL / STYLUS) -->
+        <canvas id="inkCanvas" class="ink-canvas"></canvas>
+
+        <!-- CAPA 3: PREVISUALIZACIÓN DE FORMAS Y LAZO -->
+        <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL 1: GOOGLE DOCS — COGER ARCHIVOS DE GOOGLE DOCS Y GRABAR NOTAS EN FORMATO GOOGLE DOCS -->
+  <dialog id="googleDocsDialog" class="modern-dialog" closedby="any" aria-labelledby="gdocsDialogTitle">
+    <div class="dialog-header">
+      <div class="dialog-title-wrap">
+        <span style="font-size:22px;">📄</span>
+        <h2 id="gdocsDialogTitle">Integración con Google Docs (.docx / .doc)</h2>
+      </div>
+      <button id="closeGoogleDocsDialogBtn" class="dialog-close-btn" aria-label="Cerrar ventana">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <!-- 1. Grabar la nota actual en formato Google Docs -->
+      <div class="gdocs-card highlight-card">
+        <h3>💾 1. Grabar esta Nota en formato Google Docs</h3>
+        <p class="muted-text">
+          Convierte la página actual (incluyendo todo el texto con formato, tablas, fotos e incluso los dibujos del boli táctil) en un documento de Google Docs (<code>.docx</code> / <code>.doc</code>) y lo guarda en tu bóveda de Google Drive:
+        </p>
+        <div class="drive-buttons-row" style="margin-top:8px;">
+          <button id="saveCurrentAsGDocBtn" class="btn-primary">
+            📄 Grabar Nota como Archivo Google Docs (.docx)
+          </button>
+          <button id="copyAndOpenNewGDocBtn" class="btn-secondary" title="Copia el contenido con formato y abre docs.new para pegarlo en un Google Doc en vivo">
+            🚀 Copiar Nota y Abrir en Google Docs (docs.new)
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Coger / Importar un archivo de Google Docs para usarlo en las notas -->
+      <div class="gdocs-card">
+        <h3>📥 2. Coger un Archivo de Google Docs para usarlo en tus Notas</h3>
+        <p class="muted-text">
+          Puedes abrir cualquier documento descargado de Google Docs (<code>.docx</code>, <code>.doc</code>, <code>.html</code>, <code>.txt</code>) o pegar el enlace de un documento de Google Docs:
+        </p>
+
+        <div class="gdocs-import-options">
+          <label class="import-mode-label">
+            <span>Al importar el documento:</span>
+            <select id="gdocImportTargetSelect" class="ribbon-select">
+              <option value="append-current">Añadir a la página actual</option>
+              <option value="new-page">Crear una página nueva con el documento</option>
+            </select>
+          </label>
+
+          <div class="drive-buttons-row">
+            <button id="pickGDocFileBtn" class="btn-primary">
+              📂 Seleccionar Archivo de Google Docs (.docx, .doc, .html, .txt)
+            </button>
+            <input
+              type="file"
+              id="gdocFileInput"
+              accept=".docx,.doc,.html,.htm,.txt,.md,.gdoc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/html,text/plain"
+              class="hidden"
+            />
+          </div>
+
+          <div class="gdoc-url-row">
+            <input
+              type="url"
+              id="gdocUrlInput"
+              placeholder="O pega el enlace compartido: https://docs.google.com/document/d/..."
+            />
+            <button id="importGDocUrlBtn" class="btn-secondary">🔗 Coger de URL</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Biblioteca de documentos en formato Google Docs guardados en tu cuenta -->
+      <div class="drive-sync-section">
+        <h3>📚 Mis Notas Grabadas en Formato Google Docs</h3>
+        <div id="savedGDocsListContainer" class="drive-files-list">
+          <p class="muted-text">Aún no has grabado notas en formato Google Docs.</p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL 2: CREDENCIALES DIRECTAS DE GOOGLE (SIN SSO COMPLEJO NI OAUTH TOKENS) Y GOOGLE DRIVE -->
+  <dialog id="googleDriveDialog" class="modern-dialog" closedby="any" aria-labelledby="driveDialogTitle">
+    <div class="dialog-header">
+      <div class="dialog-title-wrap">
+        <svg width="24" height="24" viewBox="0 0 24 24">
+          <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/>
+          <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/>
+          <path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"/>
+          <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"/>
+        </svg>
+        <h2 id="driveDialogTitle">Credenciales Directas de Google y Drive</h2>
+      </div>
+      <button id="closeDriveDialogBtn" class="dialog-close-btn" aria-label="Cerrar ventana">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <div id="authAccountCard" class="account-card">
+        <div class="account-info">
+          <div id="modalAvatarBox" class="modal-avatar">G</div>
+          <div>
+            <h3 id="modalUserName">Sin validar</h3>
+            <p id="modalUserEmail">Introduce tu correo de Google o usa el autocompletado del navegador (Sin tokens OAuth).</p>
+          </div>
+          <button id="signOutGoogleBtn" class="btn-danger hidden" style="margin-left:auto;">Cerrar sesión</button>
+        </div>
+
+        <form id="directGoogleLoginForm" class="direct-login-form" autocomplete="on">
+          <div class="form-row">
+            <label for="googleEmailInput">Correo de Google (@gmail.com o Google Workspace)</label>
+            <input
+              type="email"
+              id="googleEmailInput"
+              name="username"
+              autocomplete="username email"
+              placeholder="tu.correo@gmail.com"
+              required
+            />
+          </div>
+
+          <div class="form-row">
+            <label for="googlePasswordInput">Contraseña / Clave de Google (Autocompletado nativo del navegador)</label>
+            <input
+              type="password"
+              id="googlePasswordInput"
+              name="password"
+              autocomplete="current-password"
+              placeholder="•••••••••••• (Opcional si usas cuenta guardada)"
+            />
+          </div>
+
+          <div class="form-actions-row">
+            <button type="submit" class="btn-primary">
+              ✅ Validar con mis Credenciales de Google
+            </button>
+            <button type="button" id="browserAutoCredsBtn" class="btn-secondary">
+              🔑 Coger Credenciales del Navegador (1 Clic)
+            </button>
+          </div>
+        </form>
+
+        <div id="savedAccountsWrap" class="saved-accounts-wrap hidden">
+          <span class="saved-accounts-title">Cuentas de Google guardadas en este dispositivo:</span>
+          <div id="savedAccountsList" class="saved-accounts-list"></div>
+        </div>
+      </div>
+
+      <div class="drive-sync-section">
+        <h3>☁️ Sincronización y Envío a Google Drive</h3>
+        <div class="drive-buttons-row">
+          <button id="syncNowModalBtn" class="btn-primary">💾 Guardar Todo Ahora</button>
+          <button id="loadFromDriveModalBtn" class="btn-secondary">📥 Cargar Blocs de esta Cuenta</button>
+          <button id="exportSystemDriveBtn" class="btn-secondary">
+            📲 Enviar a App Google Drive (Android / Carpeta Drive)
+          </button>
+          <button id="exportPagePngDriveModalBtn" class="btn-secondary">🖼️ Guardar Página como PNG</button>
+        </div>
+
+        <div id="driveFilesListContainer" class="drive-files-list">
+          <p class="muted-text">Valida tu correo de Google arriba para ver tus blocs y archivos de Google Docs sincronizados.</p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL 3: PROBAR EN ANDROID (CÓDIGO QR Y BOTÓN DE INSTALACIÓN PWA) -->
+  <dialog id="androidPwaDialog" class="modern-dialog" closedby="any" aria-labelledby="androidPwaTitle">
+    <div class="dialog-header">
+      <div class="dialog-title-wrap">
+        <span style="font-size:22px;">📱</span>
+        <h2 id="androidPwaTitle">Probar e Instalar PWA en tu Android</h2>
+      </div>
+      <button id="closeAndroidPwaDialogBtn" class="dialog-close-btn" aria-label="Cerrar ventana">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <div class="pwa-install-banner">
+        <div>
+          <h3>📲 Instalación directa como App (PWA)</h3>
+          <p>Instala OneNote Clone en la pantalla de inicio de tu Android, Chromebook o Mac. En móvil activa automáticamente la vista simple a pantalla completa.</p>
+        </div>
+        <button id="triggerPwaInstallBtn" class="btn-primary">📲 Instalar App Ahora</button>
+      </div>
+
+      <div class="android-wifi-card">
+        <div class="qr-box">
+          <img id="androidQrImg" class="qr-img" alt="Código QR para abrir en Android" />
+        </div>
+        <div class="wifi-instructions">
+          <h3>🌐 Cómo abrirlo desde tu móvil o tablet Android:</h3>
+          <ol>
+            <li>Asegúrate de que tu <strong>Android</strong> esté en la <strong>misma red Wi-Fi</strong> que este Mac.</li>
+            <li>Escanea el QR o escribe esta dirección en <strong>Chrome para Android</strong>:</li>
+          </ol>
+          <div class="url-copy-box">
+            <code id="androidWifiUrlText">Cargando IP local...</code>
+            <button id="copyAndroidUrlBtn" class="btn-secondary">📋 Copiar URL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL 4: CÁMARA WEB PARA INSERTAR FOTOS EN EL LIENZO -->
+  <dialog id="cameraDialog" class="modern-dialog" closedby="any" aria-labelledby="cameraDialogTitle">
+    <div class="dialog-header">
+      <h2 id="cameraDialogTitle">📷 Capturar Foto para la Nota</h2>
+      <button id="closeCameraDialogBtn" class="dialog-close-btn" aria-label="Cerrar cámara">✕</button>
+    </div>
+    <div class="dialog-body camera-body">
+      <video id="cameraVideo" autoplay playsinline class="camera-video"></video>
+      <div class="camera-actions">
+        <button id="capturePhotoBtn" class="btn-primary">📸 Capturar e Insertar en la Nota</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- NOTIFICACIÓN FLOTANTE (TOAST) -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script type="module" src="./app.js?v=5"></script>
+</body>
+</html>

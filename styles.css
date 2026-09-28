@@ -1,0 +1,1689 @@
+:root {
+  --onenote-purple: #7719aa;
+  --onenote-purple-dark: #581080;
+  --onenote-purple-light: #f5ebfa;
+  --onenote-accent: #9333ea;
+  --bg-app: #f3f2f1;
+  --bg-surface: #ffffff;
+  --bg-ribbon: #faf9f8;
+  --bg-sidebar: #f8f7f6;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.12);
+  --paper-bg: #ffffff;
+  --rule-line-color: rgba(59, 130, 246, 0.22);
+  --margin-line-color: rgba(239, 68, 68, 0.28);
+}
+
+body.dark-theme {
+  --bg-app: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-ribbon: #1e293b;
+  --bg-sidebar: #162032;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --onenote-purple-light: #3b1754;
+  --paper-bg: #1e293b;
+  --rule-line-color: rgba(148, 163, 184, 0.18);
+  --margin-line-color: rgba(248, 113, 113, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: var(--text-main);
+  background-color: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+/* ==========================================
+   BARRA SUPERIOR (HEADER PURPLE ONENOTE)
+   ========================================== */
+.topbar {
+  height: 48px;
+  background: linear-gradient(90deg, var(--onenote-purple-dark) 0%, var(--onenote-purple) 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  gap: 12px;
+  user-select: none;
+  z-index: 40;
+}
+
+.topbar-left, .topbar-center, .topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-center {
+  flex: 1;
+  justify-content: center;
+  max-width: 720px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--onenote-purple);
+  font-weight: 800;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.brand-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-title {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.2px;
+}
+
+.os-badge {
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-weight: 500;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Buscador Global */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 32px;
+  width: 100%;
+  max-width: 340px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.search-box:focus-within {
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.search-box input {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 13px;
+  width: 100%;
+  padding-left: 8px;
+  outline: none;
+}
+
+.search-box input::placeholder {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.search-box:focus-within input::placeholder {
+  color: #94a3b8;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.search-result-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.search-result-item:hover {
+  background: var(--onenote-purple-light);
+}
+
+.search-result-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Píldora de estado del Boli Táctil */
+.pointer-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pressure-badge {
+  background: rgba(255, 255, 255, 0.18);
+  padding: 1px 6px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Estado de Sincronización y Botones Google Drive */
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+
+.sync-dot.saving {
+  background: #facc15;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.topbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.topbar-btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.google-auth-btn {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #ffffff;
+}
+
+.google-auth-btn:hover {
+  background: #f8fafc;
+}
+
+.user-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ==========================================
+   CINTA DE OPCIONES (RIBBON ONENOTE)
+   ========================================== */
+.ribbon {
+  background: var(--bg-ribbon);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  user-select: none;
+  z-index: 30;
+}
+
+.ribbon-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  overflow-x: auto;
+}
+
+.ribbon-tabs-left, .ribbon-tabs-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ribbon-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.ribbon-tab:hover {
+  color: var(--text-main);
+}
+
+.ribbon-tab.active {
+  color: var(--onenote-purple);
+  border-bottom-color: var(--onenote-purple);
+}
+
+.ribbon-mini-btn {
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ribbon-mini-btn:hover {
+  background: var(--onenote-purple-light);
+}
+
+.ribbon-mini-btn.danger:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.lasso-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.lasso-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--onenote-purple);
+  background: var(--onenote-purple-light);
+  padding: 3px 8px;
+  border-radius: 99px;
+}
+
+.ribbon-panel {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  min-height: 54px;
+  overflow-x: auto;
+}
+
+.ribbon-panel.active {
+  display: flex;
+}
+
+.ribbon-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ribbon-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
+.group-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+.ribbon-hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+kbd {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+/* Botones de Herramientas y Bolígrafos */
+.tool-btn, .pen-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  height: 36px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tool-btn:hover, .pen-preset-btn:hover {
+  border-color: var(--onenote-purple);
+  background: var(--onenote-purple-light);
+}
+
+.tool-btn.active, .pen-preset-btn.active {
+  background: var(--onenote-purple);
+  color: #ffffff;
+  border-color: var(--onenote-purple);
+  box-shadow: 0 2px 6px rgba(119, 25, 170, 0.3);
+}
+
+.tool-btn.primary-accent {
+  border-color: var(--onenote-purple);
+  color: var(--onenote-purple);
+}
+
+.tool-btn.danger-hover:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.pen-tip {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.highlighter-tip {
+  border-radius: 3px;
+  width: 16px;
+  height: 10px;
+  transform: skewX(-15deg);
+}
+
+.rainbow-tip {
+  background: conic-gradient(#ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ec4899, #ef4444);
+}
+
+.format-btn, .tag-btn {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.format-btn:hover, .tag-btn:hover {
+  background: var(--onenote-purple-light);
+  border-color: var(--onenote-purple);
+}
+
+.ribbon-select {
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 12.5px;
+}
+
+/* Paleta de Colores y Grosor */
+.color-swatches, .paper-colors {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.color-swatch, .paper-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.color-swatch.active, .paper-color-btn.active {
+  transform: scale(1.18);
+  border-color: var(--onenote-purple);
+  box-shadow: 0 0 0 2px rgba(119, 25, 170, 0.25);
+}
+
+#customInkColorPicker {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.thickness-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.thickness-control input[type="range"] {
+  width: 80px;
+  accent-color: var(--onenote-purple);
+}
+
+.toggle-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+}
+
+.toggle-check input {
+  accent-color: var(--onenote-purple);
+}
+
+/* ==========================================
+   WORKSPACE: PANELES LATERALES + LIENZO
+   ========================================== */
+.workspace {
+  display: flex;
+  height: calc(100vh - 103px);
+  width: 100%;
+  overflow: hidden;
+}
+
+.sidebar-container {
+  display: flex;
+  width: 390px;
+  min-width: 340px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  transition: margin-left 0.22s ease;
+  user-select: none;
+  z-index: 20;
+}
+
+.sidebar-container.collapsed {
+  margin-left: -390px;
+}
+
+.notebook-sections-col {
+  width: 190px;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.pages-col {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+}
+
+.notebook-selector-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notebook-select {
+  flex: 1;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 6px;
+}
+
+.mini-icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  cursor: pointer;
+}
+
+.col-subheader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mini-add-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mini-add-btn.primary {
+  background: var(--onenote-purple);
+  color: #ffffff;
+  border-color: var(--onenote-purple);
+}
+
+.sections-list, .pages-list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px;
+}
+
+.section-item, .page-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.12s;
+}
+
+.section-item {
+  border-left: 5px solid var(--onenote-purple);
+}
+
+.section-item:hover, .page-item:hover {
+  background: rgba(119, 25, 170, 0.08);
+}
+
+.section-item.active, .page-item.active {
+  background: var(--onenote-purple-light);
+  font-weight: 700;
+  color: var(--onenote-purple);
+}
+
+.page-item.subpage {
+  margin-left: 14px;
+  font-size: 12.5px;
+  border-left: 2px solid var(--border-color);
+}
+
+.item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.item-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.section-item:hover .item-actions,
+.page-item:hover .item-actions {
+  opacity: 1;
+}
+
+.item-action-btn {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.item-action-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--text-main);
+}
+
+/* ==========================================
+   LIENZO INFINITO / PÁGINA MULTIMODAL
+   ========================================== */
+.canvas-viewport {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg-app);
+  position: relative;
+  padding: 18px;
+}
+
+.page-surface {
+  position: relative;
+  width: 1600px;
+  height: 2000px;
+  background-color: var(--paper-bg);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  transform-origin: 0 0;
+  overflow: hidden;
+}
+
+/* Estilos de Papel de OneNote (Renglones, Cuadrícula, Puntos) */
+.page-surface.paper-blank {
+  background-image: none;
+}
+
+.page-surface.paper-ruled-narrow {
+  background-image:
+    linear-gradient(90deg, transparent 64px, var(--margin-line-color) 64px, var(--margin-line-color) 66px, transparent 66px),
+    repeating-linear-gradient(0deg, transparent, transparent 23px, var(--rule-line-color) 23px, var(--rule-line-color) 24px);
+}
+
+.page-surface.paper-ruled-wide {
+  background-image:
+    linear-gradient(90deg, transparent 72px, var(--margin-line-color) 72px, var(--margin-line-color) 74px, transparent 74px),
+    repeating-linear-gradient(0deg, transparent, transparent 31px, var(--rule-line-color) 31px, var(--rule-line-color) 32px);
+}
+
+.page-surface.paper-grid-small {
+  background-size: 20px 20px;
+  background-image:
+    linear-gradient(to right, var(--rule-line-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--rule-line-color) 1px, transparent 1px);
+}
+
+.page-surface.paper-grid-large {
+  background-size: 36px 36px;
+  background-image:
+    linear-gradient(to right, var(--rule-line-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--rule-line-color) 1px, transparent 1px);
+}
+
+.page-surface.paper-dots {
+  background-image: radial-gradient(var(--rule-line-color) 1.6px, transparent 1.6px);
+  background-size: 24px 24px;
+}
+
+/* Encabezado de Página OneNote */
+.page-header-zone {
+  position: relative;
+  z-index: 12;
+  padding: 28px 40px 14px 88px;
+  max-width: 920px;
+}
+
+.page-title-input {
+  width: 100%;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 6px;
+  outline: none;
+}
+
+.page-title-input:focus {
+  border-bottom-color: var(--onenote-purple);
+}
+
+.page-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.page-hint-pill {
+  background: rgba(119, 25, 170, 0.09);
+  color: var(--onenote-purple);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 500;
+}
+
+/* CAPAS DEL LIENZO:
+   - blocks-layer: Contenedores de texto e imágenes flotantes
+   - ink-canvas: Trazos vectoriales del boli táctil
+   - overlay-canvas: Previsualización de formas y selección de lazo
+*/
+.blocks-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+
+.ink-canvas, .overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Crítico en Chromebook y pantallas táctiles: evita gestos del navegador al escribir con el boli táctil */
+  touch-action: none;
+}
+
+.ink-canvas {
+  z-index: 15;
+}
+
+.overlay-canvas {
+  z-index: 16;
+  pointer-events: none;
+}
+
+/* Cuando estamos en modo Texto, el canvas deja pasar los clics del ratón a los contenedores */
+.page-surface.mode-text .ink-canvas {
+  pointer-events: none;
+}
+
+.page-surface.mode-draw .ink-canvas {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.page-surface.mode-pan .ink-canvas {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+/* ==========================================
+   CONTENEDORES DE TEXTO E IMÁGENES FLOTANTES
+   ========================================== */
+.note-container {
+  position: absolute;
+  min-width: 240px;
+  min-height: 56px;
+  max-width: 780px;
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+body.dark-theme .note-container {
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.note-container.sticky-note {
+  background: #fef08a !important;
+  color: #1e293b !important;
+  border-color: #facc15;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.note-container:hover,
+.note-container:focus-within {
+  border-color: var(--onenote-purple);
+  box-shadow: 0 4px 14px rgba(119, 25, 170, 0.15);
+}
+
+.container-handle-bar {
+  height: 22px;
+  background: var(--onenote-purple-light);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 5px 5px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  cursor: move;
+  opacity: 0;
+  transition: opacity 0.15s;
+  user-select: none;
+}
+
+.note-container:hover .container-handle-bar,
+.note-container:focus-within .container-handle-bar,
+.note-container.sticky-note .container-handle-bar {
+  opacity: 1;
+}
+
+.grip-dots {
+  font-size: 11px;
+  color: var(--onenote-purple);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.container-delete-btn {
+  background: transparent;
+  border: none;
+  color: #dc2626;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.note-editable {
+  padding: 10px 12px;
+  min-height: 44px;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.55;
+  color: inherit;
+  word-break: break-word;
+}
+
+.note-editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.note-editable table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 6px 0;
+}
+
+.note-editable td, .note-editable th {
+  border: 1px solid #94a3b8;
+  padding: 6px 8px;
+  min-width: 60px;
+}
+
+.onenote-todo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+}
+
+.onenote-todo-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--onenote-purple);
+  cursor: pointer;
+}
+
+/* Imágenes Flotantes Redimensionables */
+.image-container {
+  position: absolute;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  user-select: none;
+  transition: border-color 0.15s;
+}
+
+.image-container:hover,
+.image-container.selected {
+  border-color: var(--onenote-purple);
+  box-shadow: var(--shadow-md);
+}
+
+.image-container img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.image-container .container-handle-bar {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  right: 0;
+  border-radius: 5px;
+}
+
+.image-container:hover .container-handle-bar {
+  opacity: 1;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  right: -6px;
+  bottom: -6px;
+  background: var(--onenote-purple);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.image-container:hover .resize-handle {
+  opacity: 1;
+}
+
+/* ==========================================
+   MODALES (<dialog closedby="any">)
+   ========================================== */
+dialog.modern-dialog {
+  margin: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  width: 92%;
+  max-width: 620px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
+  padding: 0;
+}
+
+dialog.modern-dialog::backdrop {
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dialog-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialog-header h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dialog-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dialog-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.account-card {
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--onenote-purple);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-info h3 {
+  font-size: 15px;
+}
+
+.account-info p {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.account-actions, .drive-buttons-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-primary, .btn-secondary, .btn-danger {
+  padding: 8px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: var(--onenote-purple);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--onenote-purple-dark);
+}
+
+.btn-secondary {
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--onenote-purple-light);
+  border-color: var(--onenote-purple);
+}
+
+.btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.drive-sync-section h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.drive-files-list {
+  margin-top: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--bg-app);
+  font-size: 12.5px;
+}
+
+.drive-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.drive-file-row:last-child {
+  border-bottom: none;
+}
+
+.topbar-avatar-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--onenote-purple);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.direct-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.form-row input {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 13.5px;
+}
+
+.form-row input:focus {
+  outline: 2px solid var(--onenote-purple);
+  border-color: transparent;
+}
+
+.form-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.saved-accounts-wrap {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.saved-accounts-title {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.saved-accounts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.saved-account-chip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 99px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--onenote-purple);
+  cursor: pointer;
+}
+
+.saved-account-chip:hover {
+  background: var(--onenote-purple-light);
+}
+
+/* Modal PWA / Android QR */
+.pwa-install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--onenote-purple-light);
+  border: 1px solid rgba(119, 25, 170, 0.25);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.pwa-install-banner h3 {
+  font-size: 14.5px;
+  color: var(--onenote-purple);
+  margin-bottom: 4px;
+}
+
+.pwa-install-banner p {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.android-wifi-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.qr-box {
+  width: 150px;
+  height: 150px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qr-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.wifi-instructions {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wifi-instructions h3 {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.wifi-instructions ol {
+  padding-left: 18px;
+  margin-bottom: 8px;
+}
+
+.url-copy-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.url-copy-box code {
+  flex: 1;
+  font-weight: 700;
+  color: var(--onenote-purple);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.camera-body {
+  align-items: center;
+}
+
+.camera-video {
+  width: 100%;
+  max-height: 340px;
+  background: #000;
+  border-radius: 8px;
+}
+
+/* ==========================================
+   ESTILOS DE GOOGLE DOCS MODAL Y BOTONES
+   ========================================== */
+.gdocs-btn {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(147, 197, 253, 0.55);
+}
+
+.gdocs-btn:hover {
+  background: rgba(59, 130, 246, 0.42);
+}
+
+.gdocs-card {
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gdocs-card.highlight-card {
+  background: var(--onenote-purple-light);
+  border-color: rgba(119, 25, 170, 0.25);
+}
+
+.gdocs-card h3 {
+  font-size: 14.5px;
+  color: var(--text-main);
+}
+
+.gdocs-import-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.import-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.gdoc-url-row {
+  display: flex;
+  gap: 8px;
+}
+
+.gdoc-url-row input {
+  flex: 1;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+/* ==========================================
+   BARRA RÁPIDA Y MODO SIMPLE MÓVIL (TEXTO A PANTALLA COMPLETA)
+   ========================================== */
+.mobile-quick-toolbar {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  user-select: none;
+  z-index: 30;
+}
+
+.m-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.m-tool-btn.active {
+  background: var(--onenote-purple);
+  color: #ffffff;
+  border-color: var(--onenote-purple);
+}
+
+.m-tool-btn.gdoc-accent {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+/* Cuando está activo el Modo Simple (por defecto en móvil Android o al conmutarlo):
+   - Se oculta el Ribbon pesado y aparece la barra simple de 1 fila.
+   - La página y el texto ocupan prácticamente el 100% del ancho y alto de la pantalla. */
+body.mobile-simple-mode .ribbon {
+  display: none !important;
+}
+
+body.mobile-simple-mode .mobile-quick-toolbar {
+  display: flex;
+}
+
+body.mobile-simple-mode .workspace {
+  height: calc(100vh - 92px);
+}
+
+body.mobile-simple-mode .canvas-viewport {
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body.mobile-simple-mode .page-surface {
+  width: 100% !important;
+  min-height: calc(100vh - 92px);
+  height: auto !important;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none !important;
+  padding-bottom: 80px;
+}
+
+body.mobile-simple-mode .page-surface.paper-ruled-wide,
+body.mobile-simple-mode .page-surface.paper-ruled-narrow {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 31px,
+    var(--rule-line-color) 31px,
+    var(--rule-line-color) 32px
+  );
+}
+
+body.mobile-simple-mode .page-header-zone {
+  padding: 12px 14px 8px 14px;
+  max-width: 100%;
+}
+
+body.mobile-simple-mode .page-title-input {
+  font-size: 22px;
+  padding-bottom: 4px;
+}
+
+body.mobile-simple-mode .page-hint-pill {
+  display: none;
+}
+
+body.mobile-simple-mode .blocks-layer {
+  position: relative;
+  inset: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 12px 40px 12px;
+  width: 100%;
+}
+
+body.mobile-simple-mode .note-container {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.mobile-simple-mode .note-container:first-of-type .note-editable {
+  min-height: calc(100vh - 210px);
+}
+
+body.mobile-simple-mode .note-editable {
+  padding: 6px 4px;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+body.mobile-simple-mode .note-container .container-handle-bar {
+  height: 20px;
+  opacity: 0.7;
+  background: transparent;
+  border-bottom: none;
+  justify-content: flex-end;
+}
+
+body.mobile-simple-mode .note-container .grip-dots {
+  display: none;
+}
+
+body.mobile-simple-mode .image-container {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  width: 100% !important;
+  max-width: 520px !important;
+  height: auto !important;
+  margin: 6px 0;
+}
+
+/* ==========================================
+   TOAST NOTIFICATIONS
+   ========================================== */
+.toast-container {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+}
+
+.toast {
+  background: #1e293b;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-md);
+  border-left: 4px solid var(--onenote-purple);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    height: 44px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+  .sidebar-container {
+    position: absolute;
+    height: calc(100vh - 86px);
+    box-shadow: var(--shadow-md);
+    width: 310px;
+    min-width: 280px;
+  }
+  .sidebar-container.collapsed {
+    margin-left: -320px;
+  }
+  .os-badge, .pointer-pill, .hide-on-mobile, .search-box {
+    display: none;
+  }
+  .android-wifi-card, .pwa-install-banner, .gdoc-url-row {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .hide-on-small-phone {
+    display: none !important;
+  }
+}
+
+
