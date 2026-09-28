@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+node_modules/
+google_drive_vault.json
+.env
+*.log
