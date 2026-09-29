@@ -12,7 +12,7 @@
   <link rel="icon" href="./favicon.ico" sizes="any" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
   <link rel="manifest" href="./manifest.json" />
-  <link rel="stylesheet" href="./styles.css?v=5" />
+  <link rel="stylesheet" href="./styles.css?v=6" />
 </head>
 <body>
   <!-- BARRA SUPERIOR ESTILO MICROSOFT ONENOTE -->
@@ -68,6 +68,12 @@
       <button id="openGoogleDocsModalBtn" class="topbar-btn gdocs-btn" title="Coger archivos de Google Docs o grabar esta nota en formato Google Docs (.docx / .doc)">
         <span>📄</span>
         <span>Google Docs</span>
+      </button>
+
+      <!-- Botón para Compartir por Enlace (x20web / GitHub Pages / Nota directa) -->
+      <button id="openShareModalBtn" class="topbar-btn pwa-btn" title="Compartir aplicación o nota actual mediante enlace web (x20web / Web HTTPS)">
+        <span>🔗</span>
+        <span class="hide-on-mobile">Compartir</span>
       </button>
 
       <button id="openAndroidPwaModalBtn" class="topbar-btn pwa-btn hide-on-small-phone" title="Abrir en tu Android vía Wi-Fi / QR o instalar como aplicación PWA">
@@ -687,9 +693,61 @@
     </div>
   </dialog>
 
+  <!-- MODAL 5: COMPARTIR VÍA ENLACE WEB (X20WEB CORP / WEB PÚBLICA HTTPS / NOTA DIRECTA) -->
+  <dialog id="shareLinkDialog" class="modern-dialog" closedby="any" aria-labelledby="shareDialogTitle">
+    <div class="dialog-header">
+      <div class="dialog-title-wrap">
+        <span style="font-size:22px;">🔗</span>
+        <h2 id="shareDialogTitle">Compartir Aplicación y Nota vía Enlace Web</h2>
+      </div>
+      <button id="closeShareDialogBtn" class="dialog-close-btn" aria-label="Cerrar ventana">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <div class="pwa-install-banner" style="margin-bottom:14px;">
+        <div>
+          <h3>🏢 Enlace Corporativo Google x20web</h3>
+          <p>Para compartir internamente en la red corporativa de Google (formato <code>users.x20web.corp.google.com</code>):</p>
+          <div class="url-copy-box" style="margin-top:8px;">
+            <code id="x20CorpUrlText">https://pedropm.users.x20web.corp.google.com/cloneonenote/</code>
+            <button id="copyX20UrlBtn" class="btn-primary">📋 Copiar x20web</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pwa-install-banner" style="margin-bottom:14px;">
+        <div>
+          <h3>🌐 Enlace Web Público HTTPS (Mac, Chromebook y Android)</h3>
+          <p>Disponible al instante desde cualquier dispositivo sin requerir VPN ni certificado corporativo:</p>
+          <div class="url-copy-box" style="margin-top:8px;">
+            <code id="publicWebUrlText">https://piterpaul.github.io/cloneonenote/</code>
+            <button id="copyPublicWebUrlBtn" class="btn-primary">📋 Copiar Enlace Web</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="android-wifi-card">
+        <div class="qr-box">
+          <img id="shareQrImg" class="qr-img" alt="Código QR para abrir el enlace compartido" />
+        </div>
+        <div class="wifi-instructions">
+          <h3>📄 Compartir Enlace con la Nota Actual Incluida</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">
+            Este enlace incluye codificada la página actual (título, texto y trazos de boli táctil) para que quien lo abra vea tu nota directamente:
+          </p>
+          <div class="url-copy-box">
+            <code id="shareNoteUrlText" style="word-break:break-all;max-height:54px;overflow:hidden;">Generando enlace...</code>
+            <button id="copyShareNoteUrlBtn" class="btn-secondary">📋 Copiar Nota</button>
+            <button id="nativeShareUrlBtn" class="btn-primary">📤 Compartir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- NOTIFICACIÓN FLOTANTE (TOAST) -->
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script type="module" src="./app.js?v=5"></script>
+  <script type="module" src="./app.js?v=6"></script>
 </body>
 </html>

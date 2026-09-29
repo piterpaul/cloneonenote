@@ -1,5 +1,5 @@
 {
-  "id": "/index.html",
+  "id": "./index.html",
   "name": "OneNote Clone — Notas, Boli Táctil y Google Drive",
   "short_name": "OneNote Clone",
   "description": "Clon web y PWA de Microsoft OneNote con soporte de boli táctil (Stylus), teclado, imágenes, Google Docs (.docx) y guardado en Google Drive.",
