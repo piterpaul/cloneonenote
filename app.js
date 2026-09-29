@@ -7,7 +7,7 @@
  * - Autenticación con Credenciales de Google (OAuth 2.0) y Sincronización con Google Drive API v3
  */
 
-import { GoogleDriveManager } from './drive.js?v=5';
+import { GoogleDriveManager } from './drive.js?v=6';
 
 const LOCAL_STORAGE_KEY = 'onenote_clone_workspace_v1';
 
@@ -65,6 +65,7 @@ class OneNoteCloneApp {
     this.setupDialogLightDismissFallback();
     this.detectOperatingSystem();
     this.bindEvents();
+    this.checkUrlSharedNoteOnStartup();
     this.renderAll();
     this.updateGoogleAuthUI(this.driveManager.getUser());
   }
@@ -274,6 +275,7 @@ class OneNoteCloneApp {
     this.syncText = document.getElementById('syncText');
     this.toggleSimpleLayoutBtn = document.getElementById('toggleSimpleLayoutBtn');
     this.openGoogleDocsModalBtn = document.getElementById('openGoogleDocsModalBtn');
+    this.openShareModalBtn = document.getElementById('openShareModalBtn');
     this.saveToDriveBtn = document.getElementById('saveToDriveBtn');
     this.openDriveModalBtn = document.getElementById('openDriveModalBtn');
     this.openAndroidPwaModalBtn = document.getElementById('openAndroidPwaModalBtn');
@@ -317,6 +319,7 @@ class OneNoteCloneApp {
     this.googleDocsDialog = document.getElementById('googleDocsDialog');
     this.googleDriveDialog = document.getElementById('googleDriveDialog');
     this.androidPwaDialog = document.getElementById('androidPwaDialog');
+    this.shareLinkDialog = document.getElementById('shareLinkDialog');
     this.cameraDialog = document.getElementById('cameraDialog');
     this.cameraVideo = document.getElementById('cameraVideo');
     this.toastContainer = document.getElementById('toastContainer');
@@ -379,7 +382,7 @@ class OneNoteCloneApp {
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'onenote-pwa-cache-v5') {
+          if (key !== 'onenote-pwa-cache-v6') {
             caches.delete(key);
           }
         });
@@ -388,7 +391,7 @@ class OneNoteCloneApp {
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
-        .register('./sw.js?v=5')
+        .register('./sw.js?v=6')
         .then((reg) => {
           reg.update().catch(() => {});
         })
@@ -1766,7 +1769,10 @@ class OneNoteCloneApp {
   async openAndroidPwaInfoModal() {
     const urlCode = document.getElementById('androidWifiUrlText');
     const qrImg = document.getElementById('androidQrImg');
-    let targetUrl = window.location.origin;
+    let targetUrl = window.location.href.split('#')[0].split('?')[0];
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      targetUrl = 'https://piterpaul.github.io/cloneonenote/';
+    }
 
     try {
       const res = await fetch('/api/network-info');
@@ -1785,6 +1791,95 @@ class OneNoteCloneApp {
       )}`;
     }
     this.androidPwaDialog.showModal();
+  }
+
+  buildShareNoteUrl() {
+    const page = this.getActivePage();
+    let baseUrl = window.location.href.split('#')[0].split('?')[0];
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      baseUrl = 'https://piterpaul.github.io/cloneonenote/';
+    }
+    if (!page) return baseUrl;
+
+    try {
+      const sharePayload = {
+        t: page.title || 'Nota Compartida',
+        ps: page.paperStyle || 'ruled-wide',
+        pc: page.paperColor || '#ffffff',
+        b: (page.blocks || [])
+          .filter((blk) => blk.type === 'text')
+          .map((blk) => ({
+            x: blk.x,
+            y: blk.y,
+            w: blk.width,
+            s: Boolean(blk.isSticky),
+            h: blk.html
+          })),
+        st: (page.strokes || []).slice(0, 60)
+      };
+      const jsonStr = JSON.stringify(sharePayload);
+      const b64 = btoa(encodeURIComponent(jsonStr));
+      return `${baseUrl}#share=${b64}`;
+    } catch (_) {
+      return baseUrl;
+    }
+  }
+
+  openShareModal() {
+    const shareNoteUrl = this.buildShareNoteUrl();
+    const noteUrlEl = document.getElementById('shareNoteUrlText');
+    const qrImg = document.getElementById('shareQrImg');
+    if (noteUrlEl) noteUrlEl.textContent = shareNoteUrl;
+    if (qrImg) {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+        'https://piterpaul.github.io/cloneonenote/'
+      )}`;
+    }
+    this.shareLinkDialog?.showModal();
+  }
+
+  checkUrlSharedNoteOnStartup() {
+    const hash = window.location.hash || '';
+    if (!hash.startsWith('#share=')) return;
+    const encoded = hash.slice('#share='.length).trim();
+    if (!encoded) return;
+
+    try {
+      const jsonStr = decodeURIComponent(atob(encoded));
+      const payload = JSON.parse(jsonStr);
+      const section = this.getActiveSection();
+      if (!section || !payload) return;
+
+      const sharedPageId = 'page-shared-' + Date.now();
+      const newPage = {
+        id: sharedPageId,
+        title: `🔗 ${payload.t || 'Nota Compartida'}`,
+        createdAt: new Date().toLocaleString('es-ES'),
+        isSubpage: false,
+        paperStyle: payload.ps || 'ruled-wide',
+        paperColor: payload.pc || '#ffffff',
+        blocks: Array.isArray(payload.b)
+          ? payload.b.map((item, idx) => ({
+              id: `blk-sh-${idx}-${Date.now()}`,
+              type: 'text',
+              x: item.x || 88,
+              y: item.y || 125,
+              width: item.w || 460,
+              isSticky: Boolean(item.s),
+              html: item.h || ''
+            }))
+          : [],
+        strokes: Array.isArray(payload.st) ? payload.st : []
+      };
+
+      section.pages.unshift(newPage);
+      this.workspace.activePageId = sharedPageId;
+      this.saveLocalState();
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      setTimeout(() => {
+        this.showToast(`🔗 Nota compartida "${payload.t || 'Nota'}" abierta desde el enlace.`);
+      }, 300);
+    } catch (_) {}
   }
 
   async refreshDriveFilesListUI() {
@@ -2744,6 +2839,52 @@ class OneNoteCloneApp {
         this.showToast(`📋 URL copiada: ${text}`);
       });
     }
+
+    // Modal y Botones de Compartir Enlace (x20web / Web HTTPS / Nota Codificada)
+    if (this.openShareModalBtn) {
+      this.openShareModalBtn.addEventListener('click', () => {
+        this.openShareModal();
+      });
+    }
+
+    document.getElementById('closeShareDialogBtn')?.addEventListener('click', () => {
+      this.shareLinkDialog?.close();
+    });
+
+    document.getElementById('copyX20UrlBtn')?.addEventListener('click', () => {
+      const text = document.getElementById('x20CorpUrlText')?.textContent || '';
+      navigator.clipboard?.writeText(text);
+      this.showToast(`📋 Enlace x20web copiado: ${text}`);
+    });
+
+    document.getElementById('copyPublicWebUrlBtn')?.addEventListener('click', () => {
+      const text = document.getElementById('publicWebUrlText')?.textContent || '';
+      navigator.clipboard?.writeText(text);
+      this.showToast(`📋 Enlace Web Público copiado: ${text}`);
+    });
+
+    document.getElementById('copyShareNoteUrlBtn')?.addEventListener('click', () => {
+      const text = document.getElementById('shareNoteUrlText')?.textContent || '';
+      navigator.clipboard?.writeText(text);
+      this.showToast('📋 Enlace directo con la nota actual copiado al portapapeles.');
+    });
+
+    document.getElementById('nativeShareUrlBtn')?.addEventListener('click', async () => {
+      const shareUrl = document.getElementById('shareNoteUrlText')?.textContent || '';
+      const pageTitle = this.getActivePage()?.title || 'Nota de OneNote Clone';
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: pageTitle,
+            text: `Mira esta nota en OneNote Web Clone: "${pageTitle}"`,
+            url: shareUrl
+          });
+          return;
+        } catch (_) {}
+      }
+      navigator.clipboard?.writeText(shareUrl);
+      this.showToast('📋 Enlace copiado para compartir.');
+    });
 
     // Conmutador Vista Simple Móvil (Texto a pantalla completa)
     if (this.toggleSimpleLayoutBtn) {

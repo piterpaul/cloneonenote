@@ -4,6 +4,8 @@
   "description": "Clon web de Microsoft OneNote optimizado para Mac y Chromebook con soporte de boli táctil (Stylus), teclado en lienzo libre, imágenes y Google Drive API v3.",
   "scripts": {
     "start": "python3 server.py",
-    "serve": "npx -y serve -l 8090 ."
+    "serve": "npx -y serve -l 8090 .",
+    "publish": "bash ./publish-x20.sh",
+    "publish:x20": "bash ./publish-x20.sh"
   }
 }

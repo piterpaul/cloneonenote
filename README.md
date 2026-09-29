@@ -4,7 +4,24 @@ Clon web instalable como **PWA (Progressive Web App)** de **Microsoft OneNote**,
 
 ---
 
-## 🚀 Cómo ejecutarlo y probarlo en tu Android y Mac
+## 🔗 Enlaces Publicados para Compartir y Consumir Directamente
+
+- 🌐 **Enlace Web Público HTTPS (Mac, Chromebook y Android — Sin VPN)**:  
+  👉 **[https://piterpaul.github.io/cloneonenote/](https://piterpaul.github.io/cloneonenote/)**
+- 🏢 **Enlace Corporativo Google x20web (`users.x20web.corp.google.com`)**:  
+  👉 **[https://pedropm.users.x20web.corp.google.com/cloneonenote/](https://pedropm.users.x20web.corp.google.com/cloneonenote/)**
+- 📄 **Compartir una Nota específica por URL (`#share=...`)**:  
+  Pulsa el botón **`🔗 Compartir`** en la barra superior de la aplicación para generar y copiar un enlace que incluye tu nota actual (texto y trazos de boli táctil) codificada directamente en el enlace.
+
+### Publicar / Actualizar en `x20web` y GitHub Pages
+Para sincronizar tu directorio `/google/data/rw/users/pe/pedropm/www/cloneonenote` (`https://pedropm.users.x20web.corp.google.com/cloneonenote/`) y GitHub Pages:
+```bash
+npm run publish:x20
+```
+
+---
+
+## 🚀 Cómo ejecutarlo en local en tu Android y Mac
 
 En la terminal dentro de `/Users/pedropm/Desktop/cloneonenote`:
 
@@ -14,7 +31,7 @@ npm start
 
 Esto inicia el servidor [server.py](file:///Users/pedropm/Desktop/cloneonenote/server.py) escuchando en toda tu red Wi-Fi local:
 - 💻 **En tu Mac / Chromebook**: Abre **`http://localhost:8090`**
-- 📱 **En tu móvil o tablet Android (en la misma red Wi-Fi)**: Abre **`http://192.168.86.204:8090`** (o pulsa el botón **📱 Android / PWA** en la barra superior para escanear el **Código QR** directamente con la cámara de tu Android).
+- 📱 **En tu móvil o tablet Android (en la misma red Wi-Fi)**: Abre **`http://192.168.86.204:8090`** (o pulsa el botón **📱 Probar en Android** en la barra superior para escanear el **Código QR** directamente con la cámara de tu Android).
 
 ### 📲 Cómo instalar la PWA en tu Android
 1. Abre `http://192.168.86.204:8090` en **Google Chrome** desde tu Android.
