@@ -12,7 +12,7 @@
   <link rel="icon" href="./favicon.ico" sizes="any" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
   <link rel="manifest" href="./manifest.json" />
-  <link rel="stylesheet" href="./styles.css?v=6" />
+  <link rel="stylesheet" href="./styles.css?v=7" />
 </head>
 <body>
   <!-- BARRA SUPERIOR ESTILO MICROSOFT ONENOTE -->
@@ -57,6 +57,23 @@
         <span class="sync-dot synced" id="syncDot"></span>
         <span id="syncText" class="hide-on-mobile">Guardado</span>
       </div>
+
+      <!-- 1. Botón de Búsqueda Interna ("Buscar en esta nota/bloc") -->
+      <button id="toggleInNoteSearchBtn" class="topbar-btn in-note-search-trigger" title="Buscar y resaltar texto en esta nota o sección (Cmd+F / Ctrl+F)" aria-expanded="false" aria-controls="inNoteSearchBar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span class="hide-on-mobile">Buscar en nota</span>
+      </button>
+
+      <!-- 2. Botón de Agente de IA Conversacional ("Asistente de Nota") -->
+      <button id="openAiAssistantTopBtn" class="topbar-btn ai-assistant-top-btn" title="Abrir Asistente de IA de la Nota (Preguntas, Resumen, Tareas y Recordatorios)" aria-expanded="false" aria-controls="aiAssistantSheet">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2ZM19 15L20.1 17.9L23 19L20.1 20.1L19 23L17.9 20.1L15 19L17.9 17.9L19 15ZM6 16L6.8 18.2L9 19L6.8 19.8L6 22L5.2 19.8L3 19L5.2 18.2L6 16Z"/>
+        </svg>
+        <span class="hide-on-mobile">Asistente IA</span>
+      </button>
 
       <!-- Botón para alternar Vista Simple Móvil (Texto ocupa casi todo el espacio) -->
       <button id="toggleSimpleLayoutBtn" class="topbar-btn" title="Alternar Vista Simple Móvil (Texto a pantalla completa) / Vista Completa de Escritorio">
@@ -107,6 +124,12 @@
 
   <!-- BARRA ULTRASIMPLE DE 1 FILA PARA MÓVIL / ANDROID PWA -->
   <div id="mobileQuickToolbar" class="mobile-quick-toolbar" aria-label="Herramientas rápidas móviles">
+    <button id="mobileInNoteSearchBtn" class="m-tool-btn" title="Buscar y resaltar texto en esta nota">
+      🔍 Buscar
+    </button>
+    <button id="mobileAiAssistantBtn" class="m-tool-btn ai-accent" title="Asistente de IA de la nota y recordatorios">
+      ✨ Asistente IA
+    </button>
     <button class="m-tool-btn mode-trigger active" data-tool="text" title="Escribir texto ocupando toda la pantalla">
       ⌨️ Texto
     </button>
@@ -453,6 +476,42 @@
 
     <!-- CONTENEDOR DEL LIENZO INFINITO / PÁGINA ONENOTE -->
     <section class="canvas-viewport" id="canvasViewport">
+      <!-- 1. BARRA DESPLEGABLE DE BÚSQUEDA INTERNA ("BUSCAR EN ESTA NOTA/BLOC") -->
+      <div id="inNoteSearchBar" class="in-note-search-bar hidden" role="search" aria-label="Buscar en esta nota o bloc">
+        <div class="in-note-search-field-wrap">
+          <svg class="in-note-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="search"
+            id="inNoteSearchInput"
+            class="in-note-search-input"
+            placeholder="Buscar y resaltar texto en esta nota o sección..."
+            aria-label="Escribir término para buscar en la nota"
+            autocomplete="off"
+          />
+          <select id="inNoteSearchScopeSelect" class="in-note-scope-select" title="Ámbito de búsqueda interna" aria-label="Ámbito de búsqueda interna">
+            <option value="note">En esta nota</option>
+            <option value="section">En esta sección</option>
+            <option value="notebook">En este bloc</option>
+          </select>
+        </div>
+
+        <div class="in-note-search-controls">
+          <span id="inNoteMatchCounter" class="in-note-match-counter" aria-live="polite">0 / 0</span>
+          <button id="inNotePrevMatchBtn" type="button" class="in-note-nav-btn" title="Coincidencia anterior (Shift+Enter)" aria-label="Saltar a la coincidencia anterior" disabled>
+            ▲ Anterior
+          </button>
+          <button id="inNoteNextMatchBtn" type="button" class="in-note-nav-btn" title="Coincidencia siguiente (Enter)" aria-label="Saltar a la coincidencia siguiente" disabled>
+            ▼ Siguiente
+          </button>
+          <button id="closeInNoteSearchBtn" type="button" class="in-note-close-btn" title="Cerrar barra de búsqueda (Esc)" aria-label="Cerrar búsqueda interna">
+            ✕
+          </button>
+        </div>
+      </div>
+
       <div id="pageSurface" class="page-surface paper-ruled-wide">
         <!-- Encabezado de Página clásico de OneNote -->
         <div class="page-header-zone">
@@ -466,6 +525,14 @@
           <div class="page-meta-row">
             <span id="pageDateLabel" class="page-date-label"></span>
             <span class="page-hint-pill">Escribe con teclado o usa el boli táctil para anotar</span>
+            <div class="page-header-quick-actions">
+              <button id="pageHeaderSearchBtn" type="button" class="page-action-pill" title="Buscar y resaltar en esta nota (Cmd+F / Ctrl+F)">
+                🔍 Buscar en esta nota
+              </button>
+              <button id="pageHeaderAiBtn" type="button" class="page-action-pill ai-pill" title="Abrir Asistente de Nota IA">
+                ✨ Asistente de Nota
+              </button>
+            </div>
           </div>
         </div>
 
@@ -479,6 +546,161 @@
         <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
       </div>
     </section>
+
+    <!-- 2. BOTÓN FLOTANTE DE ACCIÓN (FAB M3) — AGENTE DE IA CONVERSACIONAL ("ASISTENTE DE NOTA") -->
+    <button
+      id="aiAssistantFab"
+      type="button"
+      class="ai-assistant-fab"
+      title="Asistente de Nota IA — Preguntas sobre tus apuntes, Tareas y Recordatorios"
+      aria-label="Abrir Asistente de Nota IA"
+      aria-expanded="false"
+      aria-controls="aiAssistantSheet"
+    >
+      <svg class="ai-sparkles-svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2ZM19 15L20.1 17.9L23 19L20.1 20.1L19 23L17.9 20.1L15 19L17.9 17.9L19 15ZM6 16L6.8 18.2L9 19L6.8 19.8L6 22L5.2 19.8L3 19L5.2 18.2L6 16Z"/>
+      </svg>
+      <span class="ai-fab-label">Asistente de Nota</span>
+      <span id="aiPendingTasksBadge" class="ai-fab-badge hidden" title="Tareas pendientes o recordatorios activos">0</span>
+    </button>
+
+    <!-- FONDO SEMITRANSPARENTE PARA EL BOTTOMSHEET EN MÓVIL -->
+    <div id="aiSheetBackdrop" class="ai-sheet-backdrop hidden" aria-hidden="true"></div>
+
+    <!-- HOJA INFERIOR (BOTTOMSHEET M3 EN MÓVIL) / PANEL LATERAL DE CHAT (ESCRITORIO) -->
+    <aside
+      id="aiAssistantSheet"
+      class="ai-assistant-sheet hidden"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="aiSheetTitle"
+    >
+      <!-- Tirador superior estilo Material Design 3 BottomSheet -->
+      <div class="ai-sheet-drag-handle" aria-hidden="true">
+        <span></span>
+      </div>
+
+      <header class="ai-sheet-header">
+        <div class="ai-sheet-title-group">
+          <div class="ai-avatar-badge" aria-hidden="true">✨</div>
+          <div>
+            <h2 id="aiSheetTitle" class="ai-sheet-title">Asistente de Nota IA</h2>
+            <p id="aiContextStatusText" class="ai-context-subtitle">Contexto sincronizado con tu nota activa</p>
+          </div>
+        </div>
+        <div class="ai-sheet-header-actions">
+          <select id="aiContextScopeSelect" class="ai-context-select" title="Seleccionar el contexto que recibe el Agente de IA" aria-label="Contexto del Agente de IA">
+            <option value="note">📄 Nota actual</option>
+            <option value="section">📂 Sección activa</option>
+            <option value="notebook">📚 Bloc completo</option>
+          </select>
+          <button id="closeAiSheetBtn" type="button" class="dialog-close-btn" title="Cerrar Asistente de IA" aria-label="Cerrar Asistente de IA">✕</button>
+        </div>
+      </header>
+
+      <!-- Píldora de resumen en vivo del contexto cargado -->
+      <div id="aiLiveContextBanner" class="ai-live-context-banner">
+        <span class="ai-context-dot"></span>
+        <span id="aiLiveContextSummary">Leyendo contenido de la nota...</span>
+        <button id="aiRefreshContextBtn" type="button" class="ai-mini-link-btn" title="Actualizar contexto e identificar tareas">🔄 Analizar</button>
+      </div>
+
+      <!-- Pestañas M3: Chat Conversacional vs Gestión de Tareas y Recordatorios -->
+      <div class="ai-sheet-tabs" role="tablist" aria-label="Modos del Asistente de Nota">
+        <button id="aiTabChatBtn" type="button" class="ai-sheet-tab active" role="tab" aria-selected="true" data-ai-tab="chat">
+          💬 Chat sobre la Nota
+        </button>
+        <button id="aiTabTasksBtn" type="button" class="ai-sheet-tab" role="tab" aria-selected="false" data-ai-tab="tasks">
+          ☑️ Tareas y Recordatorios <span id="aiTabTasksCount" class="ai-tab-pill">0</span>
+        </button>
+      </div>
+
+      <!-- VISTA 1: CHAT CONVERSACIONAL CON CONTEXTO DE LA NOTA -->
+      <div id="aiChatPanelView" class="ai-sheet-view active">
+        <!-- Chips de sugerencias rápidas -->
+        <div class="ai-quick-prompts" aria-label="Preguntas y acciones rápidas">
+          <button type="button" class="ai-prompt-chip" data-prompt="¿Qué puntos clave o decisiones hay en esta nota?">
+            ❓ ¿Qué decidimos o anotamos?
+          </button>
+          <button type="button" class="ai-prompt-chip" data-prompt="Identifica y extrae todas las tareas pendientes o compromisos de esta nota.">
+            📋 Extraer tareas pendientes
+          </button>
+          <button type="button" class="ai-prompt-chip" data-prompt="Haz un resumen ejecutivo estructurado de esta nota.">
+            📝 Resumir esta nota
+          </button>
+          <button type="button" class="ai-prompt-chip" data-prompt="Configura un recordatorio rápido para las tareas principales de esta nota.">
+            ⏰ Recordatorio rápido
+          </button>
+        </div>
+
+        <!-- Historial de mensajes del chat -->
+        <div id="aiChatMessagesList" class="ai-chat-messages" aria-live="polite"></div>
+
+        <!-- Formulario de entrada de chat -->
+        <form id="aiChatForm" class="ai-chat-form" autocomplete="off">
+          <input
+            type="text"
+            id="aiChatInput"
+            class="ai-chat-input"
+            placeholder="Pregunta sobre tu nota o pide extraer tareas..."
+            aria-label="Escribe tu pregunta para el Asistente de Nota"
+            required
+          />
+          <button type="submit" id="aiChatSendBtn" class="ai-chat-send-btn" title="Enviar consulta a la IA" aria-label="Enviar mensaje">
+            ➤
+          </button>
+        </form>
+      </div>
+
+      <!-- VISTA 2: GESTIÓN DE TAREAS EXTRAÍDAS Y RECORDATORIOS RÁPIDOS -->
+      <div id="aiTasksPanelView" class="ai-sheet-view hidden">
+        <div class="ai-tasks-toolbar">
+          <button id="aiExtractTasksFromNoteBtn" type="button" class="btn-primary ai-extract-btn">
+            ✨ Escanear Nota y Extraer Compromisos
+          </button>
+        </div>
+
+        <!-- Formulario rápido para crear tarea / recordatorio manual o asistido -->
+        <form id="aiQuickReminderForm" class="ai-quick-reminder-form" autocomplete="off">
+          <input
+            type="text"
+            id="aiNewTaskTitleInput"
+            class="ai-task-input"
+            placeholder="Nueva tarea o compromiso de la nota..."
+            aria-label="Descripción de la tarea o recordatorio"
+            required
+          />
+          <div class="ai-reminder-row">
+            <select id="aiReminderPresetSelect" class="ai-reminder-select" aria-label="Cuándo recordar">
+              <option value="10s">⚡ En 10 seg (Probar notificación ahora)</option>
+              <option value="1m">⏰ En 1 minuto</option>
+              <option value="15m">⏰ En 15 minutos</option>
+              <option value="1h">⏰ En 1 hora</option>
+              <option value="tomorrow9">🌅 Mañana a las 09:00</option>
+            </select>
+            <button type="submit" class="btn-primary ai-save-reminder-btn">
+              🔔 Guardar Recordatorio
+            </button>
+          </div>
+        </form>
+
+        <div class="ai-tasks-section-header">
+          <span>📋 Tareas detectadas en la nota</span>
+          <button id="aiInsertAllTasksToNoteBtn" type="button" class="ai-mini-link-btn" title="Insertar las tareas extraídas como casillas interactivas en la nota">
+            ➕ Añadir a la nota
+          </button>
+        </div>
+        <div id="aiExtractedTasksList" class="ai-tasks-list"></div>
+
+        <div class="ai-tasks-section-header" style="margin-top:12px;">
+          <span>⏰ Mis Recordatorios Rápidos Activos</span>
+          <button id="aiTestNotificationPermBtn" type="button" class="ai-mini-link-btn" title="Activar notificaciones del sistema">
+            🔔 Activar avisos
+          </button>
+        </div>
+        <div id="aiSavedRemindersList" class="ai-tasks-list"></div>
+      </div>
+    </aside>
   </main>
 
   <!-- MODAL 1: GOOGLE DOCS — COGER ARCHIVOS DE GOOGLE DOCS Y GRABAR NOTAS EN FORMATO GOOGLE DOCS -->
@@ -748,6 +970,6 @@
   <!-- NOTIFICACIÓN FLOTANTE (TOAST) -->
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script type="module" src="./app.js?v=6"></script>
+  <script type="module" src="./app.js?v=7"></script>
 </body>
 </html>

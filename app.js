@@ -54,6 +54,21 @@ class OneNoteCloneApp {
     this.speechRecognition = null;
     this.isDictating = false;
 
+    // 1. Estado de Búsqueda Interna ("Buscar en esta nota/bloc")
+    this.isInNoteSearchOpen = false;
+    this.inNoteSearchQuery = '';
+    this.inNoteSearchScope = 'note'; // 'note' | 'section' | 'notebook'
+    this.inNoteMatches = [];
+    this.currentMatchIndex = -1;
+
+    // 2. Estado del Agente de IA Conversacional ("Asistente de Nota")
+    this.isAiSheetOpen = false;
+    this.aiContextScope = 'note'; // 'note' | 'section' | 'notebook'
+    this.aiActiveTab = 'chat'; // 'chat' | 'tasks'
+    this.aiChatHistory = [];
+    this.aiExtractedTasks = [];
+    this.aiReminders = this.loadSavedReminders();
+
     // Inicializar Gestor de Google Drive
     this.driveManager = new GoogleDriveManager({
       onStatusChange: (user) => this.updateGoogleAuthUI(user),
@@ -65,6 +80,7 @@ class OneNoteCloneApp {
     this.setupDialogLightDismissFallback();
     this.detectOperatingSystem();
     this.bindEvents();
+    this.initInNoteSearchAndAiAssistant();
     this.checkUrlSharedNoteOnStartup();
     this.renderAll();
     this.updateGoogleAuthUI(this.driveManager.getUser());
@@ -382,7 +398,7 @@ class OneNoteCloneApp {
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'onenote-pwa-cache-v6') {
+          if (key !== 'onenote-pwa-cache-v7') {
             caches.delete(key);
           }
         });
@@ -391,7 +407,7 @@ class OneNoteCloneApp {
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
-        .register('./sw.js?v=6')
+        .register('./sw.js?v=7')
         .then((reg) => {
           reg.update().catch(() => {});
         })
@@ -721,6 +737,11 @@ class OneNoteCloneApp {
     this.renderBlocksLayer(page);
     this.redrawInkCanvas();
     this.redrawOverlayCanvas();
+
+    if (this.isInNoteSearchOpen && this.inNoteSearchQuery) {
+      this.performInNoteSearch(false);
+    }
+    this.refreshAiContextUI();
   }
 
   /* =========================================================
@@ -752,6 +773,7 @@ class OneNoteCloneApp {
           page.blocks = page.blocks.filter((b) => b.id !== block.id);
           this.renderBlocksLayer(page);
           this.saveLocalState();
+          this.refreshAiContextUI();
         });
         handleBar.appendChild(delBtn);
 
@@ -768,6 +790,10 @@ class OneNoteCloneApp {
         editable.addEventListener('input', () => {
           block.html = editable.innerHTML;
           this.saveLocalState();
+          if (this.isInNoteSearchOpen && this.inNoteSearchQuery && typeof CSS !== 'undefined' && CSS.highlights) {
+            this.performInNoteSearch(false);
+          }
+          this.refreshAiContextUI();
         });
 
         // Soporte para casillas interactivas dentro del contenedor
@@ -780,6 +806,7 @@ class OneNoteCloneApp {
             }
             block.html = editable.innerHTML;
             this.saveLocalState();
+            this.refreshAiContextUI();
           }
         });
 
@@ -2989,7 +3016,10 @@ class OneNoteCloneApp {
     // Atajos de Teclado para Mac (Cmd ⌘) y Chromebook (Ctrl)
     window.addEventListener('keydown', (e) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
-      if (isCmdOrCtrl && e.key.toLowerCase() === 's') {
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        this.toggleInNoteSearch(true);
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 's') {
         e.preventDefault();
         this.driveManager.saveWorkspaceToDrive(this.workspace);
       } else if (isCmdOrCtrl && e.key.toLowerCase() === 'z') {
@@ -3013,6 +3043,1088 @@ class OneNoteCloneApp {
     });
   }
 
+  /* ============================================================================
+     NUEVAS FUNCIONALIDADES:
+     1. BOTÓN DE BÚSQUEDA INTERNA ("BUSCAR EN ESTA NOTA/BLOC")
+     2. AGENTE DE IA CONVERSACIONAL ("ASISTENTE DE NOTA" — CHAT + TAREAS + RECORDATORIOS)
+     ============================================================================ */
+  initInNoteSearchAndAiAssistant() {
+    // Referencias DOM — 1. Búsqueda Interna
+    this.toggleInNoteSearchBtn = document.getElementById('toggleInNoteSearchBtn');
+    this.mobileInNoteSearchBtn = document.getElementById('mobileInNoteSearchBtn');
+    this.pageHeaderSearchBtn = document.getElementById('pageHeaderSearchBtn');
+    this.inNoteSearchBar = document.getElementById('inNoteSearchBar');
+    this.inNoteSearchInput = document.getElementById('inNoteSearchInput');
+    this.inNoteSearchScopeSelect = document.getElementById('inNoteSearchScopeSelect');
+    this.inNoteMatchCounter = document.getElementById('inNoteMatchCounter');
+    this.inNotePrevMatchBtn = document.getElementById('inNotePrevMatchBtn');
+    this.inNoteNextMatchBtn = document.getElementById('inNoteNextMatchBtn');
+    this.closeInNoteSearchBtn = document.getElementById('closeInNoteSearchBtn');
+
+    // Referencias DOM — 2. Asistente de Nota IA
+    this.openAiAssistantTopBtn = document.getElementById('openAiAssistantTopBtn');
+    this.mobileAiAssistantBtn = document.getElementById('mobileAiAssistantBtn');
+    this.pageHeaderAiBtn = document.getElementById('pageHeaderAiBtn');
+    this.aiAssistantFab = document.getElementById('aiAssistantFab');
+    this.aiPendingTasksBadge = document.getElementById('aiPendingTasksBadge');
+    this.aiSheetBackdrop = document.getElementById('aiSheetBackdrop');
+    this.aiAssistantSheet = document.getElementById('aiAssistantSheet');
+    this.closeAiSheetBtn = document.getElementById('closeAiSheetBtn');
+    this.aiContextScopeSelect = document.getElementById('aiContextScopeSelect');
+    this.aiLiveContextSummary = document.getElementById('aiLiveContextSummary');
+    this.aiRefreshContextBtn = document.getElementById('aiRefreshContextBtn');
+    this.aiTabChatBtn = document.getElementById('aiTabChatBtn');
+    this.aiTabTasksBtn = document.getElementById('aiTabTasksBtn');
+    this.aiTabTasksCount = document.getElementById('aiTabTasksCount');
+    this.aiChatPanelView = document.getElementById('aiChatPanelView');
+    this.aiTasksPanelView = document.getElementById('aiTasksPanelView');
+    this.aiChatMessagesList = document.getElementById('aiChatMessagesList');
+    this.aiChatForm = document.getElementById('aiChatForm');
+    this.aiChatInput = document.getElementById('aiChatInput');
+    this.aiExtractTasksFromNoteBtn = document.getElementById('aiExtractTasksFromNoteBtn');
+    this.aiQuickReminderForm = document.getElementById('aiQuickReminderForm');
+    this.aiNewTaskTitleInput = document.getElementById('aiNewTaskTitleInput');
+    this.aiReminderPresetSelect = document.getElementById('aiReminderPresetSelect');
+    this.aiInsertAllTasksToNoteBtn = document.getElementById('aiInsertAllTasksToNoteBtn');
+    this.aiExtractedTasksList = document.getElementById('aiExtractedTasksList');
+    this.aiSavedRemindersList = document.getElementById('aiSavedRemindersList');
+    this.aiTestNotificationPermBtn = document.getElementById('aiTestNotificationPermBtn');
+
+    // Eventos — 1. Búsqueda Interna en la Nota
+    [this.toggleInNoteSearchBtn, this.mobileInNoteSearchBtn, this.pageHeaderSearchBtn].forEach((btn) => {
+      btn?.addEventListener('click', () => this.toggleInNoteSearch());
+    });
+
+    this.closeInNoteSearchBtn?.addEventListener('click', () => this.toggleInNoteSearch(false));
+
+    this.inNoteSearchInput?.addEventListener('input', (e) => {
+      this.inNoteSearchQuery = e.target.value;
+      this.performInNoteSearch(true);
+    });
+
+    this.inNoteSearchInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          this.navigateInNoteMatch(-1);
+        } else {
+          this.navigateInNoteMatch(1);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.toggleInNoteSearch(false);
+      }
+    });
+
+    this.inNoteSearchScopeSelect?.addEventListener('change', (e) => {
+      this.inNoteSearchScope = e.target.value;
+      this.performInNoteSearch(true);
+    });
+
+    this.inNotePrevMatchBtn?.addEventListener('click', () => this.navigateInNoteMatch(-1));
+    this.inNoteNextMatchBtn?.addEventListener('click', () => this.navigateInNoteMatch(1));
+
+    // Eventos — 2. Agente de IA Conversacional ("Asistente de Nota")
+    [
+      this.aiAssistantFab,
+      this.openAiAssistantTopBtn,
+      this.mobileAiAssistantBtn,
+      this.pageHeaderAiBtn
+    ].forEach((btn) => {
+      btn?.addEventListener('click', () => this.toggleAiAssistantSheet());
+    });
+
+    this.closeAiSheetBtn?.addEventListener('click', () => this.toggleAiAssistantSheet(false));
+    this.aiSheetBackdrop?.addEventListener('click', () => this.toggleAiAssistantSheet(false));
+
+    this.aiContextScopeSelect?.addEventListener('change', (e) => {
+      this.aiContextScope = e.target.value;
+      this.refreshAiContextUI();
+      const scopeLabel =
+        this.aiContextScope === 'notebook'
+          ? 'todo el Bloc de notas'
+          : this.aiContextScope === 'section'
+          ? 'toda la Sección activa'
+          : 'la Nota actual';
+      this.appendAiMessage(
+        'assistant',
+        `🔄 He actualizado mi contexto para analizar <b>${scopeLabel}</b>. ¿Qué deseas consultar o extraer?`
+      );
+    });
+
+    this.aiRefreshContextBtn?.addEventListener('click', () => {
+      this.refreshAiContextUI(true);
+      this.showToast('✨ Contexto de la nota sincronizado y tareas actualizadas.');
+    });
+
+    this.aiTabChatBtn?.addEventListener('click', () => this.switchAiTab('chat'));
+    this.aiTabTasksBtn?.addEventListener('click', () => this.switchAiTab('tasks'));
+
+    document.querySelectorAll('.ai-prompt-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const prompt = chip.dataset.prompt || '';
+        if (prompt) {
+          this.switchAiTab('chat');
+          this.handleUserAiPrompt(prompt);
+        }
+      });
+    });
+
+    this.aiChatForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const query = this.aiChatInput?.value.trim();
+      if (!query) return;
+      this.aiChatInput.value = '';
+      this.handleUserAiPrompt(query);
+    });
+
+    this.aiExtractTasksFromNoteBtn?.addEventListener('click', () => {
+      const tasks = this.extractTasksAndCommitmentsFromContext();
+      this.renderExtractedTasksUI();
+      this.showToast(`📋 Se han identificado ${tasks.length} tareas/compromisos en tus apuntes.`);
+    });
+
+    this.aiInsertAllTasksToNoteBtn?.addEventListener('click', () => {
+      this.insertAllExtractedTasksToNote();
+    });
+
+    this.aiQuickReminderForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = this.aiNewTaskTitleInput?.value.trim();
+      const preset = this.aiReminderPresetSelect?.value || '10s';
+      if (!title) return;
+      this.createQuickReminder(title, preset);
+      this.aiNewTaskTitleInput.value = '';
+    });
+
+    this.aiTestNotificationPermBtn?.addEventListener('click', () => {
+      this.requestSystemNotificationPermission();
+    });
+
+    // Mensaje inicial de bienvenida del Agente de IA
+    this.seedInitialAiWelcomeMessage();
+    this.renderSavedRemindersUI();
+    this.startRemindersCheckLoop();
+  }
+
+  /* ----------------------------------------------------------------------------
+     1. LÓGICA DE BÚSQUEDA INTERNA ("BUSCAR EN ESTA NOTA/BLOC")
+     Cumple con modern-web-guidance: highlight-text-ranges (CSS.highlights + fallback)
+     ---------------------------------------------------------------------------- */
+  toggleInNoteSearch(forceState) {
+    const nextState = typeof forceState === 'boolean' ? forceState : !this.isInNoteSearchOpen;
+    this.isInNoteSearchOpen = nextState;
+
+    this.inNoteSearchBar?.classList.toggle('hidden', !this.isInNoteSearchOpen);
+    this.toggleInNoteSearchBtn?.classList.toggle('active', this.isInNoteSearchOpen);
+    this.toggleInNoteSearchBtn?.setAttribute('aria-expanded', String(this.isInNoteSearchOpen));
+
+    if (this.isInNoteSearchOpen) {
+      this.inNoteSearchInput?.focus();
+      this.inNoteSearchInput?.select();
+      if (this.inNoteSearchQuery) {
+        this.performInNoteSearch(true);
+      }
+    } else {
+      this.clearInNoteHighlights();
+      this.inNoteMatches = [];
+      this.currentMatchIndex = -1;
+      this.updateInNoteSearchControlsUI();
+    }
+  }
+
+  clearInNoteHighlights() {
+    if (typeof CSS !== 'undefined' && CSS.highlights) {
+      // MANDATORY per modern-web-guidance (highlight-text-ranges):
+      // Clear previous highlights before registering new ones to avoid stale ranges.
+      CSS.highlights.clear();
+    }
+
+    // Limpiar marcas de fallback <mark class="in-note-highlight-mark"> si el navegador no soporta CSS.highlights
+    const marks = this.blocksLayer?.querySelectorAll('mark.in-note-highlight-mark') || [];
+    marks.forEach((mark) => {
+      const parent = mark.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(mark.textContent || ''), mark);
+        parent.normalize();
+      }
+    });
+  }
+
+  performInNoteSearch(resetIndex = true) {
+    this.clearInNoteHighlights();
+    this.inNoteMatches = [];
+
+    const rawTerm = (this.inNoteSearchQuery || '').trim();
+    if (!rawTerm) {
+      this.currentMatchIndex = -1;
+      this.updateInNoteSearchControlsUI();
+      return;
+    }
+
+    const term = rawTerm.toLowerCase();
+    const activePage = this.getActivePage();
+    const editables = Array.from(this.blocksLayer?.querySelectorAll('.note-editable') || []);
+
+    if (typeof CSS !== 'undefined' && CSS.highlights) {
+      // Implementación principal con CSS Custom Highlight API (TreeWalker + Range + Highlight)
+      editables.forEach((editable) => {
+        const treeWalker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT);
+        const allTextNodes = [];
+        let currentNode = treeWalker.nextNode();
+        while (currentNode) {
+          allTextNodes.push(currentNode);
+          currentNode = treeWalker.nextNode();
+        }
+
+        allTextNodes.forEach((textNode) => {
+          const text = textNode.textContent || '';
+          const lower = text.toLowerCase();
+          let pos = lower.indexOf(term);
+          while (pos !== -1) {
+            const range = new Range();
+            range.setStart(textNode, pos);
+            range.setEnd(textNode, pos + term.length);
+            this.inNoteMatches.push({
+              pageId: activePage?.id,
+              range,
+              markEl: null,
+              editable
+            });
+            pos = lower.indexOf(term, pos + term.length);
+          }
+        });
+      });
+    } else {
+      // Fallback para navegadores sin CSS.highlights: envolver en <mark> preservando estructura
+      editables.forEach((editable) => {
+        const walker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
+
+        for (const textNode of nodes) {
+          const text = textNode.textContent || '';
+          let pos = text.toLowerCase().indexOf(term);
+          if (pos === -1) continue;
+
+          const frag = document.createDocumentFragment();
+          let last = 0;
+          while (pos !== -1) {
+            frag.append(text.slice(last, pos));
+            const mark = document.createElement('mark');
+            mark.className = 'in-note-highlight-mark';
+            mark.textContent = text.slice(pos, pos + term.length);
+            frag.append(mark);
+            this.inNoteMatches.push({
+              pageId: activePage?.id,
+              range: null,
+              markEl: mark,
+              editable
+            });
+            last = pos + term.length;
+            pos = text.toLowerCase().indexOf(term, last);
+          }
+          frag.append(text.slice(last));
+          textNode.replaceWith(frag);
+        }
+      });
+    }
+
+    // Si el ámbito incluye Sección o Bloc completo, contabilizar coincidencias en otras páginas y permitir saltar a ellas
+    this.otherPagesMatches = [];
+    if (this.inNoteSearchScope === 'section' || this.inNoteSearchScope === 'notebook') {
+      const notebooksToScan =
+        this.inNoteSearchScope === 'notebook'
+          ? [this.getActiveNotebook()]
+          : [this.getActiveNotebook()];
+      const activeSec = this.getActiveSection();
+
+      notebooksToScan.forEach((nb) => {
+        if (!nb) return;
+        const sections = this.inNoteSearchScope === 'section' ? [activeSec] : nb.sections || [];
+        sections.forEach((sec) => {
+          if (!sec) return;
+          (sec.pages || []).forEach((pg) => {
+            if (pg.id === activePage?.id) return;
+            const plain = this.getNotePlainText(pg).toLowerCase();
+            let pos = plain.indexOf(term);
+            while (pos !== -1) {
+              this.otherPagesMatches.push({
+                notebookId: nb.id,
+                sectionId: sec.id,
+                pageId: pg.id,
+                pageTitle: pg.title
+              });
+              pos = plain.indexOf(term, pos + term.length);
+            }
+          });
+        });
+      });
+    }
+
+    if (this.inNoteMatches.length > 0) {
+      if (resetIndex || this.currentMatchIndex < 0 || this.currentMatchIndex >= this.inNoteMatches.length) {
+        this.currentMatchIndex = 0;
+      }
+      this.applyActiveMatchHighlight(resetIndex);
+    } else {
+      this.currentMatchIndex = -1;
+    }
+
+    this.updateInNoteSearchControlsUI();
+  }
+
+  applyActiveMatchHighlight(scrollIntoView = true) {
+    if (this.inNoteMatches.length === 0 || this.currentMatchIndex < 0) return;
+
+    const activeMatch = this.inNoteMatches[this.currentMatchIndex];
+
+    if (typeof CSS !== 'undefined' && CSS.highlights) {
+      CSS.highlights.clear();
+      const allRanges = this.inNoteMatches.map((m) => m.range).filter(Boolean);
+      if (allRanges.length > 0) {
+        const secondary = new Highlight(...allRanges);
+        secondary.priority = 0;
+        CSS.highlights.set('search-results', secondary);
+      }
+      if (activeMatch?.range) {
+        const primary = new Highlight(activeMatch.range);
+        primary.priority = 1;
+        CSS.highlights.set('search-current', primary);
+      }
+    } else {
+      this.inNoteMatches.forEach((m, idx) => {
+        if (m.markEl) {
+          m.markEl.classList.toggle('active-match', idx === this.currentMatchIndex);
+        }
+      });
+    }
+
+    if (scrollIntoView && activeMatch) {
+      const targetRect = activeMatch.range
+        ? activeMatch.range.getBoundingClientRect()
+        : activeMatch.markEl?.getBoundingClientRect();
+
+      if (targetRect && this.canvasViewport) {
+        const viewportRect = this.canvasViewport.getBoundingClientRect();
+        const offsetTop = targetRect.top - viewportRect.top + this.canvasViewport.scrollTop - viewportRect.height / 3;
+        this.canvasViewport.scrollTo({
+          top: Math.max(0, offsetTop),
+          behavior: 'smooth'
+        });
+      }
+    }
+  }
+
+  navigateInNoteMatch(direction = 1) {
+    const totalInPage = this.inNoteMatches.length;
+    const totalOther = (this.otherPagesMatches || []).length;
+
+    if (totalInPage === 0 && totalOther > 0) {
+      // Saltar automáticamente a la primera página de la sección/bloc que contiene el término
+      const nextPg = this.otherPagesMatches[0];
+      this.workspace.activeNotebookId = nextPg.notebookId;
+      this.workspace.activeSectionId = nextPg.sectionId;
+      this.workspace.activePageId = nextPg.pageId;
+      this.renderAll();
+      this.performInNoteSearch(true);
+      this.showToast(`🔍 Saltando a coincidencia en "${nextPg.pageTitle}"`);
+      return;
+    }
+
+    if (totalInPage === 0) return;
+
+    const nextIdx = this.currentMatchIndex + direction;
+
+    // Si llegamos al final de la nota actual y hay coincidencias en otras páginas de la sección/bloc
+    if ((nextIdx >= totalInPage || nextIdx < 0) && totalOther > 0) {
+      const targetPg = this.otherPagesMatches[0];
+      this.workspace.activeNotebookId = targetPg.notebookId;
+      this.workspace.activeSectionId = targetPg.sectionId;
+      this.workspace.activePageId = targetPg.pageId;
+      this.renderAll();
+      this.performInNoteSearch(true);
+      this.showToast(`🔍 Continuando búsqueda en "${targetPg.pageTitle}"`);
+      return;
+    }
+
+    this.currentMatchIndex = (this.currentMatchIndex + direction + totalInPage) % totalInPage;
+    this.applyActiveMatchHighlight(true);
+    this.updateInNoteSearchControlsUI();
+  }
+
+  updateInNoteSearchControlsUI() {
+    const totalInPage = this.inNoteMatches.length;
+    const totalOther = (this.otherPagesMatches || []).length;
+    const totalAll = totalInPage + totalOther;
+
+    if (this.inNoteMatchCounter) {
+      if (!this.inNoteSearchQuery?.trim()) {
+        this.inNoteMatchCounter.textContent = '0 / 0';
+      } else if (totalInPage > 0) {
+        const extraSuffix = totalOther > 0 ? ` (+${totalOther} en bloc)` : '';
+        this.inNoteMatchCounter.textContent = `${this.currentMatchIndex + 1} / ${totalInPage}${extraSuffix}`;
+      } else if (totalOther > 0) {
+        this.inNoteMatchCounter.textContent = `0 aquí (${totalOther} en bloc)`;
+      } else {
+        this.inNoteMatchCounter.textContent = 'Sin coincidencias';
+      }
+    }
+
+    const hasNavigable = totalAll > 0;
+    if (this.inNotePrevMatchBtn) this.inNotePrevMatchBtn.disabled = !hasNavigable;
+    if (this.inNoteNextMatchBtn) this.inNoteNextMatchBtn.disabled = !hasNavigable;
+  }
+
+  /* ----------------------------------------------------------------------------
+     2. LÓGICA DEL AGENTE DE IA CONVERSACIONAL ("ASISTENTE DE NOTA")
+     Contexto automático + Chat natural + Extracción de Tareas y Recordatorios
+     ---------------------------------------------------------------------------- */
+  toggleAiAssistantSheet(forceState) {
+    const nextState = typeof forceState === 'boolean' ? forceState : !this.isAiSheetOpen;
+    this.isAiSheetOpen = nextState;
+
+    this.aiAssistantSheet?.classList.toggle('hidden', !this.isAiSheetOpen);
+    const isMobile = window.innerWidth <= 900;
+    this.aiSheetBackdrop?.classList.toggle('hidden', !(this.isAiSheetOpen && isMobile));
+
+    this.openAiAssistantTopBtn?.classList.toggle('active', this.isAiSheetOpen);
+    this.openAiAssistantTopBtn?.setAttribute('aria-expanded', String(this.isAiSheetOpen));
+    this.aiAssistantFab?.setAttribute('aria-expanded', String(this.isAiSheetOpen));
+
+    if (this.isAiSheetOpen) {
+      this.refreshAiContextUI(true);
+      if (this.aiActiveTab === 'chat') {
+        this.aiChatInput?.focus();
+      }
+    }
+  }
+
+  switchAiTab(tabName) {
+    this.aiActiveTab = tabName === 'tasks' ? 'tasks' : 'chat';
+    const isChat = this.aiActiveTab === 'chat';
+
+    this.aiTabChatBtn?.classList.toggle('active', isChat);
+    this.aiTabChatBtn?.setAttribute('aria-selected', String(isChat));
+    this.aiTabTasksBtn?.classList.toggle('active', !isChat);
+    this.aiTabTasksBtn?.setAttribute('aria-selected', String(!isChat));
+
+    this.aiChatPanelView?.classList.toggle('hidden', !isChat);
+    this.aiTasksPanelView?.classList.toggle('hidden', isChat);
+
+    if (!isChat) {
+      this.extractTasksAndCommitmentsFromContext();
+      this.renderExtractedTasksUI();
+      this.renderSavedRemindersUI();
+    }
+  }
+
+  getNotePlainText(page) {
+    if (!page) return '';
+    const temp = document.createElement('div');
+    const lines = [page.title || ''];
+    (page.blocks || []).forEach((b) => {
+      if (b.type === 'text' && b.html) {
+        temp.innerHTML = b.html
+          .replace(/<\/div>|<\/p>|<\/li>|<br\s*\/?>/gi, '\n')
+          .replace(/<li[^>]*>/gi, '• ');
+        lines.push(temp.textContent || '');
+      }
+    });
+    return lines
+      .join('\n')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  buildAiContextData() {
+    const nb = this.getActiveNotebook();
+    const sec = this.getActiveSection();
+    const page = this.getActivePage();
+
+    let pagesInScope = [page];
+    if (this.aiContextScope === 'section' && sec) {
+      pagesInScope = sec.pages || [page];
+    } else if (this.aiContextScope === 'notebook' && nb) {
+      pagesInScope = (nb.sections || []).flatMap((s) => s.pages || []);
+    }
+
+    const combinedLines = [];
+    const todos = [];
+
+    pagesInScope.forEach((pg) => {
+      if (!pg) return;
+      const temp = document.createElement('div');
+      (pg.blocks || []).forEach((b) => {
+        if (b.type !== 'text' || !b.html) return;
+        temp.innerHTML = b.html;
+
+        // Extraer checkboxes explícitos
+        temp.querySelectorAll('.onenote-todo-row').forEach((row) => {
+          const cb = row.querySelector('input[type="checkbox"]');
+          const text = (row.textContent || '').trim();
+          if (text) {
+            todos.push({
+              text,
+              completed: Boolean(cb?.checked || cb?.hasAttribute('checked')),
+              pageTitle: pg.title || 'Nota sin título',
+              source: 'Casilla de tarea'
+            });
+          }
+        });
+      });
+
+      const pageText = this.getNotePlainText(pg);
+      if (pageText) {
+        combinedLines.push(`[Página: ${pg.title || 'Sin título'}]\n${pageText}`);
+      }
+    });
+
+    const fullText = combinedLines.join('\n\n');
+    const wordCount = fullText ? fullText.split(/\s+/).filter(Boolean).length : 0;
+
+    return {
+      notebookName: nb?.name || 'Bloc',
+      sectionName: sec?.name || 'Sección',
+      activePageTitle: page?.title || 'Sin título',
+      scope: this.aiContextScope,
+      pageCount: pagesInScope.length,
+      wordCount,
+      fullText,
+      todos
+    };
+  }
+
+  refreshAiContextUI() {
+    const ctx = this.buildAiContextData();
+    const tasks = this.extractTasksAndCommitmentsFromContext(ctx);
+
+    if (this.aiLiveContextSummary) {
+      if (ctx.scope === 'note') {
+        this.aiLiveContextSummary.textContent = `Nota: "${ctx.activePageTitle}" (${ctx.wordCount} palabras · ${tasks.length} tareas)`;
+      } else if (ctx.scope === 'section') {
+        this.aiLiveContextSummary.textContent = `Sección: "${ctx.sectionName}" (${ctx.pageCount} págs · ${tasks.length} tareas)`;
+      } else {
+        this.aiLiveContextSummary.textContent = `Bloc: "${ctx.notebookName}" (${ctx.pageCount} págs · ${tasks.length} tareas)`;
+      }
+    }
+
+    const pendingCount = tasks.filter((t) => !t.completed).length + (this.aiReminders || []).filter((r) => !r.fired).length;
+    if (this.aiTabTasksCount) {
+      this.aiTabTasksCount.textContent = String(tasks.length);
+    }
+    if (this.aiPendingTasksBadge) {
+      this.aiPendingTasksBadge.textContent = String(pendingCount);
+      this.aiPendingTasksBadge.classList.toggle('hidden', pendingCount === 0);
+    }
+
+    if (this.isAiSheetOpen && this.aiActiveTab === 'tasks') {
+      this.renderExtractedTasksUI();
+    }
+  }
+
+  extractTasksAndCommitmentsFromContext(precomputedCtx) {
+    const ctx = precomputedCtx || this.buildAiContextData();
+    const extracted = [];
+    const seen = new Set();
+
+    // 1. Incluir las casillas de tareas (To-Dos) de la nota
+    (ctx.todos || []).forEach((todo) => {
+      const key = todo.text.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        extracted.push({
+          id: 'tsk-' + Math.random().toString(36).slice(2, 8),
+          text: todo.text,
+          completed: todo.completed,
+          pageTitle: todo.pageTitle,
+          source: 'Casilla To-Do en la nota'
+        });
+      }
+    });
+
+    // 2. Detectar compromisos, acciones o viñetas en lenguaje natural dentro del texto
+    const actionRegex =
+      /\b(pendiente|tarea|enviar|revisar|preparar|llamar|entregar|reunión|decidimos|acordamos|recordar|comprar|configurar|subir|sincronizar|probar|hacer|actualizar|validar|terminar|importante|plazo|mañana|hoy|urgente)\b/i;
+
+    const lines = (ctx.fullText || '')
+      .split('\n')
+      .map((l) => l.replace(/^[•\-*]\s*/, '').trim())
+      .filter((l) => l.length >= 8 && !l.startsWith('[Página:'));
+
+    lines.forEach((line) => {
+      const key = line.toLowerCase();
+      if (seen.has(key)) return;
+      if (actionRegex.test(line) || line.includes(':')) {
+        seen.add(key);
+        extracted.push({
+          id: 'tsk-' + Math.random().toString(36).slice(2, 8),
+          text: line.length > 120 ? line.slice(0, 117) + '...' : line,
+          completed: false,
+          pageTitle: ctx.activePageTitle,
+          source: 'Compromiso detectado por IA'
+        });
+      }
+    });
+
+    this.aiExtractedTasks = extracted;
+    return extracted;
+  }
+
+  renderExtractedTasksUI() {
+    if (!this.aiExtractedTasksList) return;
+    this.aiExtractedTasksList.innerHTML = '';
+
+    if (this.aiExtractedTasks.length === 0) {
+      this.aiExtractedTasksList.innerHTML = `
+        <p class="muted-text" style="font-size:12px;">
+          No se detectaron tareas pendientes en esta nota. Escribe compromisos en la nota o crea un recordatorio arriba.
+        </p>
+      `;
+      return;
+    }
+
+    this.aiExtractedTasks.forEach((task) => {
+      const card = document.createElement('div');
+      card.className = 'ai-task-card';
+
+      const statusIcon = task.completed ? '✅' : '⏳';
+      card.innerHTML = `
+        <div class="ai-task-card-top">
+          <div>
+            <div class="ai-task-title">${statusIcon} ${this.escapeHtml(task.text)}</div>
+            <div class="ai-task-meta">${this.escapeHtml(task.source)} · ${this.escapeHtml(task.pageTitle)}</div>
+          </div>
+        </div>
+        <div class="ai-task-card-actions">
+          <button type="button" class="ai-inline-action-btn btn-remind-10s" title="Configurar recordatorio rápido de prueba (10 seg)">
+            ⏰ Recordar (10s)
+          </button>
+          <button type="button" class="ai-inline-action-btn btn-remind-15m" title="Configurar recordatorio rápido en 15 minutos">
+            🔔 En 15 min
+          </button>
+          <button type="button" class="ai-inline-action-btn btn-add-note" title="Insertar como casilla de tarea en la nota activa">
+            ☑️ Insertar en nota
+          </button>
+        </div>
+      `;
+
+      card.querySelector('.btn-remind-10s')?.addEventListener('click', () => {
+        this.createQuickReminder(task.text, '10s');
+      });
+      card.querySelector('.btn-remind-15m')?.addEventListener('click', () => {
+        this.createQuickReminder(task.text, '15m');
+      });
+      card.querySelector('.btn-add-note')?.addEventListener('click', () => {
+        this.insertTaskIntoActiveNote(task.text);
+      });
+
+      this.aiExtractedTasksList.appendChild(card);
+    });
+  }
+
+  insertTaskIntoActiveNote(taskText) {
+    const cleanText = this.escapeHtml(taskText);
+    const snippet = `<div class="onenote-todo-row"><input type="checkbox"> <span><b>[Tarea IA]:</b> ${cleanText}</span></div>`;
+
+    const firstEditable =
+      this.activeNoteEditable && document.body.contains(this.activeNoteEditable)
+        ? this.activeNoteEditable
+        : this.blocksLayer?.querySelector('.note-editable');
+
+    if (firstEditable) {
+      firstEditable.innerHTML += snippet;
+      firstEditable.dispatchEvent(new Event('input'));
+    } else {
+      this.createTextContainerAt(88, 140, snippet);
+    }
+    this.showToast('☑️ Tarea insertada en tu nota activa.');
+  }
+
+  insertAllExtractedTasksToNote() {
+    const pending = this.aiExtractedTasks.filter((t) => !t.completed);
+    if (pending.length === 0) {
+      this.showToast('No hay tareas pendientes nuevas para insertar.');
+      return;
+    }
+    pending.slice(0, 6).forEach((t) => this.insertTaskIntoActiveNote(t.text));
+    this.showToast(`☑️ Se insertaron ${Math.min(6, pending.length)} tareas en la nota actual.`);
+  }
+
+  seedInitialAiWelcomeMessage() {
+    if (!this.aiChatMessagesList) return;
+    this.aiChatMessagesList.innerHTML = '';
+    const ctx = this.buildAiContextData();
+    this.appendAiMessage(
+      'assistant',
+      `👋 ¡Hola! Soy tu <b>Asistente de Nota IA</b>.<br><br>
+       Tengo cargado como contexto automático tu nota actual: <b>"${this.escapeHtml(ctx.activePageTitle)}"</b>.<br>
+       Puedes preguntarme cualquier detalle sobre tus apuntes, pedirme un resumen o extraer compromisos y configurar <b>recordatorios rápidos</b>.`
+    );
+  }
+
+  appendAiMessage(role, htmlContent, actions = []) {
+    if (!this.aiChatMessagesList) return;
+    const bubble = document.createElement('div');
+    bubble.className = `ai-msg-bubble ${role}`;
+    bubble.innerHTML = `<div>${htmlContent}</div>`;
+
+    if (Array.isArray(actions) && actions.length > 0) {
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'ai-msg-actions';
+      actions.forEach((act) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ai-inline-action-btn';
+        btn.textContent = act.label;
+        btn.addEventListener('click', act.onClick);
+        actionsRow.appendChild(btn);
+      });
+      bubble.appendChild(actionsRow);
+    }
+
+    this.aiChatMessagesList.appendChild(bubble);
+    this.aiChatMessagesList.scrollTop = this.aiChatMessagesList.scrollHeight;
+  }
+
+  handleUserAiPrompt(userQuery) {
+    this.appendAiMessage('user', this.escapeHtml(userQuery));
+
+    const ctx = this.buildAiContextData();
+    const tasks = this.extractTasksAndCommitmentsFromContext(ctx);
+    const q = userQuery.toLowerCase();
+
+    const lines = (ctx.fullText || '')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('[Página:'));
+
+    // Caso 1: Usuario pide extraer tareas, pendientes o compromisos
+    if (q.includes('tarea') || q.includes('pendiente') || q.includes('compromiso') || q.includes('extrae')) {
+      if (tasks.length === 0) {
+        this.appendAiMessage(
+          'assistant',
+          `He analizado <b>"${this.escapeHtml(ctx.activePageTitle)}"</b> y por ahora no hay tareas pendientes explícitas. ¿Quieres que creemos un recordatorio rápido?`,
+          [
+            {
+              label: '⏰ Abrir gestor de recordatorios',
+              onClick: () => this.switchAiTab('tasks')
+            }
+          ]
+        );
+        return;
+      }
+
+      const listHtml = tasks
+        .slice(0, 6)
+        .map(
+          (t, idx) =>
+            `${idx + 1}. ${t.completed ? '✅' : '⏳'} <b>${this.escapeHtml(t.text)}</b> <span style="color:var(--text-muted);font-size:11px;">(${this.escapeHtml(t.source)})</span>`
+        )
+        .join('<br>');
+
+      this.appendAiMessage(
+        'assistant',
+        `📋 He identificado <b>${tasks.length} tareas y compromisos</b> en tu nota <b>"${this.escapeHtml(ctx.activePageTitle)}"</b>:<br><br>${listHtml}`,
+        [
+          {
+            label: '⏰ Programar Recordatorio Rápido (10s)',
+            onClick: () => {
+              const firstPending = tasks.find((t) => !t.completed) || tasks[0];
+              if (firstPending) this.createQuickReminder(firstPending.text, '10s');
+            }
+          },
+          {
+            label: '☑️ Ver todas en Tareas y Recordatorios',
+            onClick: () => this.switchAiTab('tasks')
+          },
+          {
+            label: '➕ Insertar como To-Do en la nota',
+            onClick: () => this.insertAllExtractedTasksToNote()
+          }
+        ]
+      );
+      return;
+    }
+
+    // Caso 2: Usuario pide configurar un recordatorio rápido
+    if (q.includes('recordatorio') || q.includes('recuérdame') || q.includes('avísame') || q.includes('alarma')) {
+      const targetTask = tasks.find((t) => !t.completed)?.text || `Revisar nota: ${ctx.activePageTitle}`;
+      this.createQuickReminder(targetTask, '10s');
+      this.appendAiMessage(
+        'assistant',
+        `🔔 ¡Hecho! He configurado un <b>recordatorio rápido</b> para:<br><b>"${this.escapeHtml(targetTask)}"</b>.<br><br>Recibirás una notificación en 10 segundos (y queda guardado en tu pestaña de <i>Tareas y Recordatorios</i>).`,
+        [
+          {
+            label: '⏰ Ver mis recordatorios activos',
+            onClick: () => this.switchAiTab('tasks')
+          }
+        ]
+      );
+      return;
+    }
+
+    // Caso 3: Usuario pregunta qué se decidió, puntos clave o resumen
+    if (
+      q.includes('decid') ||
+      q.includes('reunión') ||
+      q.includes('resum') ||
+      q.includes('puntos clave') ||
+      q.includes('qué hay') ||
+      q.includes('de qué trata')
+    ) {
+      const keyBullets = lines.slice(0, 5).map((l) => `• ${this.escapeHtml(l)}`).join('<br>');
+      const pendingTasksCount = tasks.filter((t) => !t.completed).length;
+
+      this.appendAiMessage(
+        'assistant',
+        `📝 <b>Resumen contextual de "${this.escapeHtml(ctx.activePageTitle)}":</b><br><br>
+         ${keyBullets || '• La nota aún tiene poco texto escrito.'}<br><br>
+         📊 <b>Métricas del apunte:</b> ${ctx.wordCount} palabras, ${tasks.length} tareas/compromisos detectados (${pendingTasksCount} pendientes).`,
+        [
+          {
+            label: '📋 Extraer compromisos',
+            onClick: () => this.handleUserAiPrompt('Extraer tareas pendientes de esta nota')
+          },
+          {
+            label: '⏰ Crear recordatorio de seguimiento',
+            onClick: () => this.createQuickReminder(`Seguimiento: ${ctx.activePageTitle}`, '15m')
+          }
+        ]
+      );
+      return;
+    }
+
+    // Caso 4: Búsqueda semántica / por palabras clave dentro del contenido de la nota
+    const stopWords = new Set(['que', 'qué', 'como', 'cómo', 'donde', 'dónde', 'cual', 'cuál', 'para', 'con', 'los', 'las', 'una', 'esta', 'nota', 'sobre', 'dice', 'hay']);
+    const keywords = q
+      .replace(/[¿?¡!.,;:]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !stopWords.has(w));
+
+    const matchingLines = lines.filter((line) =>
+      keywords.some((kw) => line.toLowerCase().includes(kw))
+    );
+
+    if (matchingLines.length > 0) {
+      const bestKeyword = keywords[0] || '';
+      const quoted = matchingLines
+        .slice(0, 4)
+        .map((l) => `<blockquote>“${this.escapeHtml(l)}”</blockquote>`)
+        .join('');
+
+      this.appendAiMessage(
+        'assistant',
+        `🔎 Según tus apuntes en <b>"${this.escapeHtml(ctx.activePageTitle)}"</b>, encontré esta información relevante:<br><br>${quoted}`,
+        [
+          {
+            label: `🔍 Resaltar "${bestKeyword}" en la nota`,
+            onClick: () => {
+              this.inNoteSearchQuery = bestKeyword;
+              if (this.inNoteSearchInput) this.inNoteSearchInput.value = bestKeyword;
+              this.toggleInNoteSearch(true);
+              this.performInNoteSearch(true);
+            }
+          },
+          {
+            label: '⏰ Recordar este punto',
+            onClick: () => this.createQuickReminder(matchingLines[0], '15m')
+          }
+        ]
+      );
+    } else {
+      const preview = lines.slice(0, 3).map((l) => `• ${this.escapeHtml(l)}`).join('<br>');
+      this.appendAiMessage(
+        'assistant',
+        `He revisado <b>"${this.escapeHtml(ctx.activePageTitle)}"</b> (${ctx.wordCount} palabras). No encontré una mención literal a <i>"${this.escapeHtml(userQuery)}"</i>, pero los puntos principales actuales son:<br><br>${preview || '• Sin contenido adicional.'}`,
+        [
+          {
+            label: '➕ Añadir este tema como tarea en la nota',
+            onClick: () => this.insertTaskIntoActiveNote(userQuery)
+          }
+        ]
+      );
+    }
+  }
+
+  /* ----------------------------------------------------------------------------
+     GESTOR DE RECORDATORIOS RÁPIDOS LOCALES Y NOTIFICACIONES DEL SISTEMA
+     ---------------------------------------------------------------------------- */
+  loadSavedReminders() {
+    try {
+      const raw = localStorage.getItem('onenote_ai_reminders_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  saveRemindersToStorage() {
+    try {
+      localStorage.setItem('onenote_ai_reminders_v1', JSON.stringify(this.aiReminders));
+    } catch (_) {}
+  }
+
+  createQuickReminder(taskTitle, preset = '10s') {
+    const now = Date.now();
+    let delayMs = 10 * 1000;
+    let label = 'En 10 segundos';
+
+    if (preset === '1m') {
+      delayMs = 60 * 1000;
+      label = 'En 1 minuto';
+    } else if (preset === '15m') {
+      delayMs = 15 * 60 * 1000;
+      label = 'En 15 minutos';
+    } else if (preset === '1h') {
+      delayMs = 60 * 60 * 1000;
+      label = 'En 1 hora';
+    } else if (preset === 'tomorrow9') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0);
+      delayMs = Math.max(60000, tomorrow.getTime() - now);
+      label = 'Mañana a las 09:00';
+    }
+
+    const reminder = {
+      id: 'rem-' + Math.random().toString(36).slice(2, 9),
+      title: taskTitle,
+      noteTitle: this.getActivePage()?.title || 'Nota actual',
+      triggerAt: now + delayMs,
+      presetLabel: label,
+      fired: false
+    };
+
+    this.aiReminders.unshift(reminder);
+    this.saveRemindersToStorage();
+    this.renderSavedRemindersUI();
+    this.refreshAiContextUI();
+    this.showToast(`⏰ Recordatorio guardado (${label}): "${taskTitle}"`);
+  }
+
+  renderSavedRemindersUI() {
+    if (!this.aiSavedRemindersList) return;
+    this.aiSavedRemindersList.innerHTML = '';
+
+    if (!this.aiReminders || this.aiReminders.length === 0) {
+      this.aiSavedRemindersList.innerHTML = `
+        <p class="muted-text" style="font-size:12px;">
+          No tienes recordatorios programados. Pulsa "⏰ Recordar" en cualquier tarea o crea uno arriba.
+        </p>
+      `;
+      return;
+    }
+
+    this.aiReminders.forEach((rem) => {
+      const card = document.createElement('div');
+      card.className = 'ai-task-card';
+      const timeStr = new Date(rem.triggerAt).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      const statusBadge = rem.fired ? '🔔 Notificado' : `⏰ Programado (${timeStr})`;
+
+      card.innerHTML = `
+        <div class="ai-task-card-top">
+          <div>
+            <div class="ai-task-title">${this.escapeHtml(rem.title)}</div>
+            <div class="ai-task-meta">${statusBadge} · Nota: ${this.escapeHtml(rem.noteTitle)}</div>
+          </div>
+          <button type="button" class="container-delete-btn" title="Eliminar recordatorio">✕</button>
+        </div>
+      `;
+
+      card.querySelector('.container-delete-btn')?.addEventListener('click', () => {
+        this.aiReminders = this.aiReminders.filter((r) => r.id !== rem.id);
+        this.saveRemindersToStorage();
+        this.renderSavedRemindersUI();
+        this.refreshAiContextUI();
+      });
+
+      this.aiSavedRemindersList.appendChild(card);
+    });
+  }
+
+  startRemindersCheckLoop() {
+    setInterval(() => {
+      const now = Date.now();
+      let changed = false;
+      (this.aiReminders || []).forEach((rem) => {
+        if (!rem.fired && now >= rem.triggerAt) {
+          rem.fired = true;
+          changed = true;
+          this.triggerReminderAlert(rem);
+        }
+      });
+      if (changed) {
+        this.saveRemindersToStorage();
+        this.renderSavedRemindersUI();
+        this.refreshAiContextUI();
+      }
+    }, 1500);
+  }
+
+  triggerReminderAlert(reminder) {
+    // 1. Mostrar Toast destacado en la interfaz
+    this.showToast(`🔔 RECORDATORIO DE NOTA: "${reminder.title}" (${reminder.noteTitle})`);
+
+    // 2. Disparar notificación nativa del navegador/sistema si está permitida
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('✨ Recordatorio de OneNote Clone', {
+          body: `${reminder.title} (Nota: ${reminder.noteTitle})`,
+          icon: './icon-192.png'
+        });
+      } catch (_) {}
+    }
+
+    // 3. Emitir tono suave mediante Web Audio API
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(660, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      }
+    } catch (_) {}
+  }
+
+  async requestSystemNotificationPermission() {
+    if (!('Notification' in window)) {
+      this.showToast('ℹ️ Las notificaciones se mostrarán como alertas dentro de la aplicación.');
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      this.showToast('🔔 ¡Notificaciones del sistema activadas para tus recordatorios!');
+    } else {
+      this.showToast('ℹ️ Usaremos notificaciones flotantes internas para tus recordatorios.');
+    }
+  }
+
+  escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   setZoom(nextZoom) {
     this.zoomLevel = Math.max(0.6, Math.min(1.8, Number(nextZoom.toFixed(2))));
     this.pageSurface.style.transform = `scale(${this.zoomLevel})`;
@@ -3033,3 +4145,4 @@ class OneNoteCloneApp {
 window.addEventListener('DOMContentLoaded', () => {
   window.oneNoteApp = new OneNoteCloneApp();
 });
+

@@ -3,12 +3,12 @@
  * Estrategia Network-First con limpieza automática de cachés antiguas.
  */
 
-const CACHE_NAME = 'onenote-pwa-cache-v6';
+const CACHE_NAME = 'onenote-pwa-cache-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './styles.css?v=6',
-  './app.js?v=6',
+  './styles.css?v=7',
+  './app.js?v=7',
   './drive.js?v=6',
   './manifest.json',
   './icon-192.png',
